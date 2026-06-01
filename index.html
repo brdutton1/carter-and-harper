@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carter &amp; Harper — Web Design</title>
+  <meta name="description" content="Two teenagers who build clean, fast, good-looking websites at fair prices." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Archivo+Black&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <header class="nav">
+    <a href="#top" class="nav__brand" data-brand></a>
+    <nav class="nav__links">
+      <a href="#services">What we do</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#about">About</a>
+      <a href="#start" class="nav__cta">Start a project</a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section id="top" class="hero">
+    <div class="hero__glow"></div>
+    <div class="hero__inner">
+      <h1 class="hero__title" data-tagline></h1>
+      <p class="hero__subtext" data-hero-subtext></p>
+      <div class="hero__buttons">
+        <a href="#start" class="btn btn--primary">Start a project</a>
+        <a href="#pricing" class="btn btn--ghost">See pricing</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT WE DO -->
+  <section id="services" class="section">
+    <h2 class="section__title">What we do</h2>
+    <div class="cards" data-what-we-do></div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="pricing" class="section">
+    <h2 class="section__title">Pricing</h2>
+    <div class="pricing" data-packages></div>
+    <p class="pricing__note" data-pricing-note></p>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="section about">
+    <h2 class="section__title" data-about-heading></h2>
+    <p class="about__text" data-about-text></p>
+  </section>
+
+  <!-- START A PROJECT -->
+  <section id="start" class="section start">
+    <h2 class="section__title" data-form-heading></h2>
+    <p class="section__subtext" data-form-subtext></p>
+
+    <form class="form" id="projectForm" novalidate>
+      <div class="form__row">
+        <label>Your name
+          <input type="text" name="name" required placeholder="First + last" />
+        </label>
+        <label>Email
+          <input type="email" name="email" required placeholder="you@email.com" />
+        </label>
+      </div>
+
+      <div class="form__row">
+        <label>What kind of project?
+          <select name="projectType" data-project-types></select>
+        </label>
+        <label>Budget
+          <select name="budget" data-budget-options></select>
+        </label>
+      </div>
+
+      <label>Tell us about it
+        <textarea name="details" rows="5" required placeholder="What's the website for? Do you have a business name, examples you like, a deadline?"></textarea>
+      </label>
+
+      <button type="submit" class="btn btn--primary btn--full" data-form-button></button>
+      <p class="form__status" id="formStatus" role="status"></p>
+    </form>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p data-footer-text></p>
+    <p class="footer__contact">Questions? <a href="#" data-contact-link></a></p>
+  </footer>
+
+  <script src="content.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
