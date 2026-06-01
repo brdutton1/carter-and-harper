@@ -272,6 +272,90 @@ a { color: inherit; text-decoration: none; }
   font-size: 0.95rem;
 }
 
+/* ---------- PROCESS / HOW WE WORK ---------- */
+.steps {
+  list-style: none;
+  margin: 44px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  counter-reset: step;
+  position: relative;
+}
+.steps::before {
+  content: "";
+  position: absolute;
+  top: 24px;
+  left: 6%;
+  right: 6%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent3));
+  opacity: 0.35;
+  z-index: 0;
+}
+.step {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 0 6px;
+}
+.step__num {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #0f0e17;
+  font-family: "Archivo Black", sans-serif;
+  font-size: 1.25rem;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.step__title {
+  font-weight: 700;
+  font-size: 1.02rem;
+  margin-bottom: 6px;
+  line-height: 1.25;
+}
+.step__text {
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+@media (max-width: 900px) {
+  .steps {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .steps::before {
+    top: 0;
+    bottom: 0;
+    left: 23px;
+    right: auto;
+    width: 2px;
+    height: auto;
+    background: linear-gradient(180deg, var(--accent), var(--accent3));
+  }
+  .step {
+    text-align: left;
+    padding: 14px 0 14px 70px;
+    position: relative;
+    min-height: 60px;
+  }
+  .step__num {
+    position: absolute;
+    left: 0;
+    top: 14px;
+    margin: 0;
+    width: 46px;
+    height: 46px;
+    font-size: 1.15rem;
+  }
+}
+
 /* ---------- ABOUT ---------- */
 .about { text-align: center; }
 .about__text {
@@ -327,6 +411,29 @@ a { color: inherit; text-decoration: none; }
   border-color: var(--accent);
 }
 .form textarea { resize: vertical; }
+
+/* honeypot — invisible to humans, visible to bots */
+.form .hp {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.form__callout {
+  margin: 4px 0 -6px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 0.92rem;
+  text-align: center;
+  line-height: 1.45;
+}
+.form__callout:empty { display: none; }
 .form__status {
   text-align: center;
   font-weight: 500;

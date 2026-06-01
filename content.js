@@ -23,8 +23,18 @@ const CONTENT = {
 
   // OPTIONAL: paste a Web3Forms access key here to turn the form into
   // real email delivery (free — see README "Turn on the form").
-  // Until then, the form opens the visitor's email app instead. Leave as "" if unused.
+  // Only used as a fallback if the AI proposal endpoint below isn't set up. Leave as "" otherwise.
   formAccessKey: "",
+
+  /* ---- AI PROPOSAL ENGINE ----
+     When someone submits the form, this is the URL the site calls.
+     "/api/proposal" is the serverless function that lives next to this site on Vercel.
+     If it's not set up yet, the form falls back to opening the visitor's email app — nothing breaks. */
+  ai: {
+    proposalEndpoint: "/api/proposal",
+    // Small line shown above the form's submit button. Leave "" to hide.
+    callout: "Powered by AI — get a real proposal in about 90 seconds. We review it before it lands in your inbox.",
+  },
 
   /* ---- COLORS (hex codes — change to recolor the whole site) ---- */
   colors: {
@@ -34,6 +44,19 @@ const CONTENT = {
     accent2:    "#f25f4c",   // second highlight (coral)
     accent3:    "#e53170",   // third highlight (pink)
     card:       "#1c1b29",   // box/card background
+  },
+
+  /* ---- HOW WE WORK (the 5 steps from "they ask" to "site is live") ---- */
+  process: {
+    heading: "How we work",
+    subtext: "From hello to live website — here's how it goes.",
+    steps: [
+      { title: "Tell us about your project",      text: "Fill out the short form below. Takes about 2 minutes." },
+      { title: "Get a real proposal in 90 seconds", text: "Our system drafts a custom plan and price. We review it personally before it lands in your inbox." },
+      { title: "We design it together",           text: "We share a draft, you tell us what to change. We don't move on until you love it." },
+      { title: "We build it for real",            text: "Fast, mobile-friendly, made to last. You see the progress as it happens." },
+      { title: "Launch + we keep it running",     text: "Go live with your own web address. Add a monthly care plan if you want us to keep it fresh." },
+    ],
   },
 
   /* ---- WHAT WE DO (the three things shown on the home page) ---- */
@@ -118,6 +141,8 @@ const CONTENT = {
           "Small text fixes (up to 30 min/mo)",
         ],
         popular: false,
+        // Paste the Stripe Payment Link URL once Bryan creates it. Until then, button jumps to the form.
+        paymentLink: "",
       },
       {
         name: "Plus Care",
@@ -131,6 +156,8 @@ const CONTENT = {
           "Priority — we reply to you first",
         ],
         popular: true,
+        // Paste the Stripe Payment Link URL once Bryan creates it. Until then, button jumps to the form.
+        paymentLink: "",
       },
     ],
     note: "Cancel anytime — no long contracts. Most clients add a care plan when their site launches.",
@@ -139,13 +166,13 @@ const CONTENT = {
   /* ---- ABOUT ---- */
   about: {
     heading: "Who we are",
-    text: "We're Carter and Harper — two friends who got into building websites and got pretty good at it. We're not a giant company, which means you talk to the actual people making your site, and you don't pay agency prices. We care about your project and we'll make sure you love it.",
+    text: "We're Carter and Harper — two friends who got obsessed with how websites work and decided to start building them for real. We're young, but we're serious about this. We use AI the way it should be used — to do the boring parts faster, not to replace the people who actually care about your project. You'll talk to us directly. You'll see exactly what you're paying for. And you'll get a site you're proud of.",
   },
 
   /* ---- THE FORM ---- */
   form: {
     heading: "Start a project",
-    subtext: "Tell us about what you need. We'll get back to you within a couple of days.",
+    subtext: "Answer a few quick questions. We'll send you a real proposal in about 90 seconds.",
     // The dropdown of project types on the form:
     projectTypes: [
       "One-Page Site",
@@ -155,6 +182,20 @@ const CONTENT = {
       "Something else",
       "Not sure yet",
     ],
+    pageOptions: [
+      "1 page",
+      "2-5 pages",
+      "6-10 pages",
+      "More than 10",
+      "Not sure",
+    ],
+    deadlineOptions: [
+      "ASAP",
+      "Within 1 month",
+      "1-3 months",
+      "No rush",
+      "Specific date (tell us below)",
+    ],
     budgetOptions: [
       "Under $200",
       "$200 – $500",
@@ -162,7 +203,7 @@ const CONTENT = {
       "More than $1,000",
       "Not sure",
     ],
-    buttonText: "Send it 🚀",
+    buttonText: "Get my proposal 🚀",
   },
 
   /* ---- FOOTER ---- */

@@ -18,6 +18,7 @@
     <a href="#top" class="nav__brand" data-brand></a>
     <nav class="nav__links">
       <a href="#services">What we do</a>
+      <a href="#process">How we work</a>
       <a href="#pricing">Pricing</a>
       <a href="#care">Care plans</a>
       <a href="#about">About</a>
@@ -42,6 +43,13 @@
   <section id="services" class="section">
     <h2 class="section__title">What we do</h2>
     <div class="cards" data-what-we-do></div>
+  </section>
+
+  <!-- HOW WE WORK -->
+  <section id="process" class="section">
+    <h2 class="section__title" data-process-heading></h2>
+    <p class="section__subtext" data-process-subtext></p>
+    <ol class="steps" data-process-steps></ol>
   </section>
 
   <!-- PRICING -->
@@ -80,18 +88,43 @@
         </label>
       </div>
 
+      <label>What's the site for? (one line)
+        <input type="text" name="goal" required placeholder="e.g. sell handmade soap, show my contracting work" />
+      </label>
+
       <div class="form__row">
-        <label>What kind of project?
+        <label>Project type
           <select name="projectType" data-project-types></select>
+        </label>
+        <label>Number of pages
+          <select name="pages" data-page-options></select>
+        </label>
+      </div>
+
+      <div class="form__row">
+        <label>Deadline
+          <select name="deadline" data-deadline-options></select>
         </label>
         <label>Budget
           <select name="budget" data-budget-options></select>
         </label>
       </div>
 
-      <label>Tell us about it
-        <textarea name="details" rows="5" required placeholder="What's the website for? Do you have a business name, examples you like, a deadline?"></textarea>
+      <label>Sites you like, or your current site (links if you have them)
+        <input type="text" name="examples" placeholder="paste 1-3 links — or skip" />
       </label>
+
+      <label>Anything else? (optional)
+        <textarea name="details" rows="3" placeholder="Business name, must-have features, anything we should know."></textarea>
+      </label>
+
+      <!-- honeypot: real visitors leave it empty; bots fill it. Hidden via CSS. -->
+      <label class="hp" aria-hidden="true">
+        Leave this empty
+        <input type="text" name="website" tabindex="-1" autocomplete="off" />
+      </label>
+
+      <p class="form__callout" data-ai-callout></p>
 
       <button type="submit" class="btn btn--primary btn--full" data-form-button></button>
       <p class="form__status" id="formStatus" role="status"></p>
