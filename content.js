@@ -26,14 +26,14 @@ const CONTENT = {
   // Only used as a fallback if the AI proposal endpoint below isn't set up. Leave as "" otherwise.
   formAccessKey: "",
 
-  /* ---- AI PROPOSAL ENGINE ----
-     When someone submits the form, this is the URL the site calls.
-     "/api/proposal" is the serverless function that lives next to this site on Vercel.
-     If it's not set up yet, the form falls back to opening the visitor's email app — nothing breaks. */
+  /* ---- AI PROPOSAL ENGINE (currently OFF) ----
+     The serverless function in /api/proposal.js is built and ready, but turned off here
+     because we shouldn't promise an instant proposal until there's real custom-design demand.
+     To turn it on later: set proposalEndpoint to "/api/proposal" and write a callout line.
+     (You'll also need ANTHROPIC_API_KEY + RESEND_API_KEY in Vercel env vars — see README.) */
   ai: {
-    proposalEndpoint: "/api/proposal",
-    // Small line shown above the form's submit button. Leave "" to hide.
-    callout: "Powered by AI — get a real proposal in about 90 seconds. We review it before it lands in your inbox.",
+    proposalEndpoint: "",
+    callout: "",
   },
 
   /* ---- COLORS (hex codes — change to recolor the whole site) ---- */
@@ -52,7 +52,7 @@ const CONTENT = {
     subtext: "From hello to live website — here's how it goes.",
     steps: [
       { title: "Tell us about your project",      text: "Fill out the short form below. Takes about 2 minutes." },
-      { title: "Get a real proposal in 90 seconds", text: "Our system drafts a custom plan and price. We review it personally before it lands in your inbox." },
+      { title: "We send back a plan and price", text: "Usually within 2 days. You'll know exactly what it costs and how long it takes — no guessing, no quote dance." },
       { title: "We design it together",           text: "We share a draft, you tell us what to change. We don't move on until you love it." },
       { title: "We build it for real",            text: "Fast, mobile-friendly, made to last. You see the progress as it happens." },
       { title: "Launch + we keep it running",     text: "Go live with your own web address. Add a monthly care plan if you want us to keep it fresh." },
@@ -173,7 +173,7 @@ const CONTENT = {
   /* ---- THE FORM ---- */
   form: {
     heading: "Start a project",
-    subtext: "Answer a few quick questions. We'll send you a real proposal in about 90 seconds.",
+    subtext: "Tell us about your project. We'll get back to you within a couple of days.",
     // The dropdown of project types on the form:
     projectTypes: [
       "One-Page Site",
@@ -204,7 +204,7 @@ const CONTENT = {
       "More than $1,000",
       "Not sure",
     ],
-    buttonText: "Get my proposal 🚀",
+    buttonText: "Send it 🚀",
   },
 
   /* ---- FOOTER ---- */
