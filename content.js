@@ -84,7 +84,7 @@ const CONTENT = {
   packages: [
     {
       name: "One-Page Site",
-      price: "$150",
+      price: "$225",
       blurb: "Perfect for a single page that tells people who you are.",
       features: [
         "1 page, looks great on phones",
@@ -96,7 +96,7 @@ const CONTENT = {
     },
     {
       name: "Small Business Site",
-      price: "$400",
+      price: "$575",
       blurb: "A few pages for a real business or service.",
       features: [
         "Up to 5 pages",
@@ -109,13 +109,14 @@ const CONTENT = {
     },
     {
       name: "Glow-Up Redesign",
-      price: "$250",
-      blurb: "Already have a site that looks old? We fix it.",
+      price: "$325",
+      blurb: "Got a site that feels stuck in the past? We rebuild it on our platform — modern design, fast loading, and ready for monthly care.",
       features: [
-        "Redesign your existing site",
-        "Faster and mobile-friendly",
-        "Fresh colors and layout",
-        "Keep your same content",
+        "Full redesign with fresh colors and layout",
+        "Rebuilt on our platform — same fast, simple setup as all our sites",
+        "Mobile-friendly, built to load fast",
+        "Keep your same content (text, photos, contact info)",
+        "Plugs straight into our monthly care plans",
       ],
       popular: false,
     },

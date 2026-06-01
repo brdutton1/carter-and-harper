@@ -33,9 +33,9 @@ Voice rules:
 - Plain English. No jargon. The reader is usually a small-business owner, not a tech person.
 
 Carter & Harper's services and starting prices:
-- One-Page Site — $150 — single page, mobile-friendly, contact button. About a week.
-- Small Business Site — $400 — up to 5 pages, custom design, contact form, gallery/menu, 1 round of changes. 2-3 weeks.
-- Glow-Up Redesign — $250 — refresh an existing site, faster, mobile-friendly, fresh colors. ~2 weeks.
+- One-Page Site — $225 — single page, mobile-friendly, contact button. About a week.
+- Small Business Site — $575 — up to 5 pages, custom design, contact form, gallery/menu, 1 round of changes. 2-3 weeks.
+- Glow-Up Redesign — $325 — rebuild an existing site on our platform: modern design, fast loading, mobile-friendly, ready for monthly care. ~2 weeks.
 - Basic Care — $25/mo — hosting, security updates, monthly backup, 30 min/mo of small fixes.
 - Plus Care — $50/mo — everything in Basic + monthly content updates and new photos/pages.
 
