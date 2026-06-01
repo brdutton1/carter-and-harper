@@ -101,6 +101,41 @@ const CONTENT = {
   // Small print under the pricing. Change or empty it ("").
   pricingNote: "Prices are starting points. Bigger or custom projects? Use the form below and we'll send a quote.",
 
+  /* ---- MONTHLY CARE PLANS (this is how we get paid every month) ---- */
+  maintenance: {
+    heading: "Keep it running — monthly care plans",
+    subtext: "A website isn't 'done' when it launches. It needs updates, backups, and little fixes. Pick a plan and we handle all of it every month so you never have to think about it.",
+    plans: [
+      {
+        name: "Basic Care",
+        price: "$25",
+        period: "/mo",
+        blurb: "We keep your site online, safe, and working.",
+        features: [
+          "Hosting kept live & checked",
+          "Security & software updates",
+          "Monthly backup",
+          "Small text fixes (up to 30 min/mo)",
+        ],
+        popular: false,
+      },
+      {
+        name: "Plus Care",
+        price: "$50",
+        period: "/mo",
+        blurb: "Everything in Basic, plus we keep it fresh for you.",
+        features: [
+          "Everything in Basic Care",
+          "Monthly content updates",
+          "Add new photos or swap a page",
+          "Priority — we reply to you first",
+        ],
+        popular: true,
+      },
+    ],
+    note: "Cancel anytime — no long contracts. Most clients add a care plan when their site launches.",
+  },
+
   /* ---- ABOUT ---- */
   about: {
     heading: "Who we are",
@@ -116,6 +151,7 @@ const CONTENT = {
       "One-Page Site",
       "Small Business Site",
       "Glow-Up Redesign",
+      "Monthly care plan",
       "Something else",
       "Not sure yet",
     ],

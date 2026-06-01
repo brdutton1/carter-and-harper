@@ -242,6 +242,13 @@ a { color: inherit; text-decoration: none; }
   margin: 8px 0 4px;
   color: var(--accent);
 }
+.price-card__period {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--muted);
+  margin-left: 4px;
+}
 .price-card__blurb { color: var(--muted); min-height: 48px; }
 .price-card__features { list-style: none; margin: 18px 0 24px; }
 .price-card__features li {

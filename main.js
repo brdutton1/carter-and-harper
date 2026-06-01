@@ -57,27 +57,42 @@
     });
   }
 
-  /* ---- Pricing ---- */
-  const priceWrap = document.querySelector("[data-packages]");
-  if (priceWrap) {
-    C.packages.forEach((p) => {
+  /* ---- Plan cards (shared by pricing + care plans) ---- */
+  function renderPlans(wrap, plans, pickValue) {
+    if (!wrap || !plans) return;
+    plans.forEach((p) => {
       const card = el("div", "price-card reveal" + (p.popular ? " price-card--popular" : ""));
       if (p.popular) card.appendChild(el("div", "price-card__badge", "Most popular"));
       card.appendChild(el("div", "price-card__name", p.name));
-      card.appendChild(el("div", "price-card__price", p.price));
+      const priceHtml = p.period
+        ? p.price + '<span class="price-card__period">' + p.period + "</span>"
+        : p.price;
+      card.appendChild(el("div", "price-card__price", priceHtml));
       card.appendChild(el("p", "price-card__blurb", p.blurb));
       const ul = el("ul", "price-card__features");
       p.features.forEach((f) => ul.appendChild(el("li", "", f)));
       card.appendChild(ul);
       const btn = el("a", "btn btn--primary", "Pick this");
       btn.href = "#start";
+      const formValue = pickValue || p.name;
       btn.addEventListener("click", () => {
         const sel = document.querySelector('select[name="projectType"]');
-        if (sel && [...sel.options].some((o) => o.value === p.name)) sel.value = p.name;
+        if (sel && [...sel.options].some((o) => o.value === formValue)) sel.value = formValue;
       });
       card.appendChild(btn);
-      priceWrap.appendChild(card);
+      wrap.appendChild(card);
     });
+  }
+
+  /* ---- Pricing (one-time packages) ---- */
+  renderPlans(document.querySelector("[data-packages]"), C.packages);
+
+  /* ---- Care plans (monthly) ---- */
+  if (C.maintenance) {
+    set("[data-care-heading]", C.maintenance.heading);
+    set("[data-care-subtext]", C.maintenance.subtext);
+    set("[data-care-note]", C.maintenance.note || "");
+    renderPlans(document.querySelector("[data-care-plans]"), C.maintenance.plans, "Monthly care plan");
   }
 
   /* ---- Form dropdowns ---- */
