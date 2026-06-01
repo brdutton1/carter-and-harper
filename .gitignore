@@ -15,3 +15,6 @@ npm-debug.log*
 .env
 .env.local
 .vercel
+
+# Claude Code local settings
+.claude/
