@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Archivo+Black&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/sprint/styles.css" />
   <link rel="stylesheet" href="/sprint/portal.css" />
+  <link rel="stylesheet" href="/sprint/admin.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>" />
 </head>
 <body class="preboot">
@@ -23,6 +24,9 @@
 
   <!-- login screen (filled by auth.js when no session) -->
   <div id="auth" hidden></div>
+
+  <!-- admin dashboard (filled by admin.js when Bryan logs in) -->
+  <div id="admin" hidden></div>
 
   <!-- the portal (shown by auth.js after login) -->
   <div class="app" data-app hidden>

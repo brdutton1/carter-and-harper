@@ -26,7 +26,7 @@ window.SprintApp = (function () {
   var state = { checks: {} };
   function save() { if (CTX && typeof CTX.onChange === "function") CTX.onChange(state.checks); }
   function isChecked(id, i) { return !!state.checks[id + "#" + i]; }
-  function setChecked(id, i, v) { if (v) state.checks[id + "#" + i] = 1; else delete state.checks[id + "#" + i]; save(); }
+  function setChecked(id, i, v) { if (v) state.checks[id + "#" + i] = 1; else delete state.checks[id + "#" + i]; save(); if (CTX && typeof CTX.onToggle === "function") CTX.onToggle(id + "#" + i, !!v); }
 
   var TASK_RE = /<li>\s*\[[ xX]\]/g;
   function taskTotal(s) { if (!s || !s.html) return 0; var m = s.html.match(TASK_RE); return m ? m.length : 0; }
@@ -34,6 +34,21 @@ window.SprintApp = (function () {
   function dayComplete(s) { var t = taskTotal(s); return t > 0 && taskDone(s) === t; }
   function dayList() { return SECTIONS.filter(function (s) { return s.type === "day"; }); }
   function firstIncompleteDay() { var d = dayList(); for (var i = 0; i < d.length; i++) if (!dayComplete(d[i])) return d[i]; return null; }
+
+  // Pure analyzer — compute a full progress summary from ANY checks object
+  // (used by the kid dashboard and the admin dashboard).
+  function taskDoneFor(s, checks) { var t = taskTotal(s), n = 0; for (var i = 0; i < t; i++) if (checks[s.id + "#" + i]) n++; return n; }
+  function analyze(checks) {
+    checks = checks || {};
+    var perDay = dayList().map(function (s) {
+      var t = taskTotal(s), d = taskDoneFor(s, checks);
+      return { day: s.day, label: s.label, ship: SHIP[s.id] || "", total: t, done: d, complete: t > 0 && d === t };
+    });
+    var tot = 0, don = 0, shipped = 0, current = null;
+    perDay.forEach(function (x) { tot += x.total; don += x.done; if (x.complete) shipped++; });
+    for (var i = 0; i < perDay.length; i++) { if (!perDay[i].complete) { current = { day: perDay[i].day, label: perDay[i].label }; break; } }
+    return { pct: tot ? Math.round(don / tot * 100) : 0, shipped: shipped, totalChecks: Object.keys(checks).length, currentDay: current, days: perDay };
+  }
 
   function computeProgress() {
     var dTot = 0, dDone = 0, shipped = 0;
@@ -364,5 +379,5 @@ window.SprintApp = (function () {
     render();
   }
 
-  return { boot: boot };
+  return { boot: boot, analyze: analyze, SHIP: SHIP };
 })();

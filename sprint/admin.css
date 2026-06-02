@@ -1,0 +1,49 @@
+/* Admin dashboard styles (Bryan's daily check-in). */
+.admin { max-width: 1080px; margin: 0 auto; padding: 32px clamp(18px, 4vw, 48px) 80px; }
+.admin__loading { color: var(--muted); padding: 60px 0; text-align: center; }
+.admin__bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 26px; }
+.admin__eyebrow { font-size: .68rem; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.admin__title { font-family: "Archivo Black", sans-serif; font-size: clamp(1.7rem, 4vw, 2.4rem); letter-spacing: -1px; margin: 8px 0 4px; }
+.admin__date { color: var(--muted); font-size: .95rem; }
+.admin__btns { display: flex; gap: 9px; }
+
+.admin__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; }
+
+.akid { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+.akid__head { display: flex; align-items: center; gap: 14px; }
+.akid__ring { flex: 0 0 56px; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; position: relative; }
+.akid__ring::before { content: ""; position: absolute; inset: 5px; background: var(--card); border-radius: 50%; }
+.akid__ring span { position: relative; font-family: "Archivo Black", sans-serif; font-size: .82rem; }
+.akid__id { flex: 1; min-width: 0; }
+.akid__name { font-family: "Archivo Black", sans-serif; font-size: 1.2rem; letter-spacing: -.4px; }
+.akid__meta { color: var(--muted); font-size: .82rem; margin-top: 2px; }
+.akid__last { font-size: .78rem; color: var(--muted2); white-space: nowrap; }
+
+.attention { margin: 12px 0 0; padding: 8px 11px; border-radius: 10px; font-size: .82rem; font-weight: 600;
+  background: rgba(251,113,133,.12); color: var(--bad); border: 1px solid rgba(251,113,133,.3); }
+.akid__now { margin: 13px 0 10px; font-size: .9rem; color: var(--muted); } .akid__now b { color: var(--text); }
+
+.adaystrip { display: flex; gap: 5px; flex-wrap: wrap; }
+.adaycell { flex: 1; min-width: 24px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  font-size: .72rem; font-weight: 700; border: 1px solid var(--line2); color: var(--muted2); }
+.adaycell.done { background: var(--grad); border-color: transparent; color: #1a1020; }
+.adaycell.current { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+.aheat__label { font-size: .7rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted2); margin: 16px 0 7px; font-weight: 700; }
+.aheat { display: flex; gap: 4px; }
+.aheatcell { flex: 1; height: 18px; border-radius: 4px; background: #1a1928; }
+.aheatcell.l1 { background: rgba(255,137,6,.35); }
+.aheatcell.l2 { background: rgba(255,137,6,.65); }
+.aheatcell.l3 { background: var(--accent); }
+
+.akid__actions { display: flex; gap: 8px; margin-top: 18px; }
+.abtn { background: var(--card2); border: 1px solid var(--line2); color: var(--text); font-family: inherit;
+  font-size: .82rem; font-weight: 600; padding: 8px 13px; border-radius: 9px; cursor: pointer; transition: border-color .15s, color .15s; }
+.abtn:hover { border-color: var(--accent); }
+.abtn:disabled { opacity: .6; cursor: default; }
+.abtn--ghost:hover { border-color: var(--bad); color: var(--bad); }
+
+.admin__foot { margin-top: 30px; color: var(--muted2); font-size: .82rem; }
+.admin__foot a { color: var(--muted2); } .admin__foot a:hover { color: var(--accent); }
+
+@media (max-width: 520px) { .admin__grid { grid-template-columns: 1fr; } }

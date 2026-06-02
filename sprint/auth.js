@@ -22,6 +22,12 @@ function makeOnChange(uid) {
     }, 600);
   };
 }
+function makeOnToggle(uid) {
+  return function (item, checked) {
+    supabase.from("activity_log").insert({ user_id: uid, item: item, checked: checked })
+      .then(({ error }) => { if (error) console.warn("activity log failed:", error.message); });
+  };
+}
 async function loadProgress(uid) {
   try {
     const { data, error } = await supabase.from("sprint_progress").select("checks").eq("user_id", uid).maybeSingle();
@@ -53,9 +59,29 @@ async function startPortal(user) {
   $auth.hidden = true;
   document.querySelector("[data-app]").hidden = false;
   document.body.classList.remove("preboot");
-  window.SprintApp.boot({ name: acct.name, checks, onChange: makeOnChange(user.id), onLogout: doLogout });
+  window.SprintApp.boot({ name: acct.name, checks, onChange: makeOnChange(user.id), onToggle: makeOnToggle(user.id), onLogout: doLogout });
 }
 async function doLogout() { try { await supabase.auth.signOut(); } catch (e) {} location.reload(); }
+
+// Route a logged-in user to the kid portal or the admin dashboard by role.
+async function route(user) {
+  let role = "kid", name = null;
+  try { const { data } = await supabase.rpc("me"); if (data) { role = data.role || "kid"; name = data.name; } } catch (e) {}
+  if (role === "admin") return startAdmin(user, name);
+  return startPortal(user);
+}
+async function startAdmin(user, name) {
+  $auth.hidden = true;
+  document.querySelector("[data-app]").hidden = true;
+  const el = document.getElementById("admin");
+  el.hidden = false;
+  document.body.classList.remove("preboot");
+  const mod = await import("/sprint/admin.js");
+  mod.renderAdmin({
+    supabase, container: el, adminName: name || "Admin",
+    analyze: window.SprintApp.analyze, SHIP: window.SprintApp.SHIP, signOut: doLogout
+  });
+}
 
 // ---------- login screen ----------
 function esc(t) { return String(t || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -80,10 +106,10 @@ async function showLogin(message) {
   // Fetch which names exist + whether they've set a password.
   let profiles = [];
   try {
-    const { data } = await supabase.from("profiles").select("name, claimed");
-    profiles = data || [];
+    const { data } = await supabase.from("profiles").select("name, claimed, role");
+    profiles = (data || []).filter(p => p.role !== "admin");
   } catch (e) {}
-  if (!profiles.length) profiles = ACCOUNTS.map(a => ({ name: a.name, claimed: true }));
+  if (!profiles.length) profiles = ACCOUNTS.filter(a => a.name !== "Bryan").map(a => ({ name: a.name, claimed: true }));
   // Keep Carter, Harper order.
   const order = ACCOUNTS.map(a => a.name);
   profiles.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
@@ -189,6 +215,89 @@ function setBusy(btn, busyText, restoreText) {
   else { btn.textContent = restoreText || btn.dataset.txt || btn.textContent; btn.disabled = false; }
 }
 
+// ---------- admin login (hidden entry at /sprint#admin) ----------
+async function showAdminLogin() {
+  document.body.classList.add("preboot");
+  document.querySelector("[data-app]").hidden = true;
+  const adminEl = document.getElementById("admin"); if (adminEl) adminEl.hidden = true;
+  $auth.hidden = false;
+  let claimed = true, name = "Bryan";
+  try {
+    const { data } = await supabase.from("profiles").select("name, claimed, role");
+    const a = (data || []).find(p => p.role === "admin");
+    if (a) { claimed = a.claimed; name = a.name; }
+  } catch (e) {}
+  $auth.innerHTML =
+    '<div class="login"><div class="login__glow"></div><div class="login__card">' +
+      '<div class="login__brand">🔒 Studio Admin</div>' +
+      '<h1 class="login__title">Admin <span class="g">Dashboard</span></h1>' +
+      '<p class="login__sub">' + (claimed ? "Welcome back, " + esc(name) + "." : "First time — set your admin password.") + '</p>' +
+      '<div class="login__form">' +
+        '<div class="login__avbig">' + esc(name.charAt(0)) + '</div>' +
+        (claimed
+          ? '<input class="login__in" data-pw type="password" placeholder="Your password" autocomplete="current-password">' +
+            '<button class="btn btn--primary login__go" data-signin>Open dashboard →</button>' +
+            '<button class="login__link" data-forgot>Forgot your password?</button>'
+          : '<p class="login__hint">Enter the studio access code, then choose a password.</p>' +
+            '<input class="login__in" data-code type="text" placeholder="Studio access code" autocomplete="off">' +
+            '<input class="login__in" data-pw type="password" placeholder="Choose a password (8+ characters)" autocomplete="new-password">' +
+            '<button class="btn btn--primary login__go" data-claim>Create admin login →</button>') +
+        '<div class="login__err" data-err></div>' +
+      '</div>' +
+    '</div></div>';
+  const pw = $auth.querySelector("[data-pw]");
+  const go = $auth.querySelector(".login__go");
+  if (claimed) {
+    const signin = async () => {
+      if (!pw.value) return showErr("Enter your password.");
+      setBusy(go, "Opening…");
+      const { data, error } = await supabase.auth.signInWithPassword({ email: emailFor(name), password: pw.value });
+      if (error || !data.user) { setBusy(go, false, "Open dashboard →"); return showErr("Wrong password. Try again, or use 'Forgot your password?'"); }
+      route(data.user);
+    };
+    go.addEventListener("click", signin);
+    pw.addEventListener("keydown", e => { if (e.key === "Enter") signin(); });
+    $auth.querySelector("[data-forgot]").addEventListener("click", () => openAdminReset(name));
+  } else {
+    const codeEl = $auth.querySelector("[data-code]");
+    const claim = async () => {
+      if (!codeEl.value.trim()) return showErr("Enter the studio access code.");
+      if (pw.value.length < 8) return showErr("Password must be at least 8 characters.");
+      setBusy(go, "Creating…");
+      const r = await callFn("claim-account", { name, accessCode: codeEl.value.trim(), password: pw.value });
+      if (!r.ok) { setBusy(go, false, "Create admin login →"); return showErr(r.data.error || "Couldn't create the login."); }
+      const { error } = await supabase.auth.signInWithPassword({ email: emailFor(name), password: pw.value });
+      if (error) { setBusy(go, false, "Create admin login →"); return showErr(error.message); }
+      const { data: { user } } = await supabase.auth.getUser();
+      route(user);
+    };
+    go.addEventListener("click", claim);
+    pw.addEventListener("keydown", e => { if (e.key === "Enter") claim(); });
+  }
+  setTimeout(() => { const f = $auth.querySelector("input"); if (f) f.focus(); }, 30);
+}
+function openAdminReset(name) {
+  const form = $auth.querySelector(".login__form");
+  form.innerHTML =
+    '<button class="login__back" data-back>← Back</button>' +
+    '<h2 class="login__name">Reset admin login</h2>' +
+    '<p class="login__hint">Enter the studio access code to reset, then set a new password.</p>' +
+    '<input class="login__in" data-code type="text" placeholder="Studio access code" autocomplete="off">' +
+    '<button class="btn btn--primary login__go" data-reset>Reset →</button>' +
+    '<div class="login__err" data-err></div>';
+  form.querySelector("[data-back]").addEventListener("click", showAdminLogin);
+  const code = form.querySelector("[data-code]"), go = form.querySelector("[data-reset]");
+  const reset = async () => {
+    if (!code.value.trim()) return showErr("Enter the studio access code.");
+    setBusy(go, "Resetting…");
+    const r = await callFn("reset-account", { name, accessCode: code.value.trim() });
+    if (!r.ok) { setBusy(go, false, "Reset →"); return showErr(r.data.error || "Reset failed."); }
+    showAdminLogin();
+  };
+  go.addEventListener("click", reset);
+  code.addEventListener("keydown", e => { if (e.key === "Enter") reset(); });
+}
+
 // ---------- boot ----------
 function hideBoot() { const b = document.querySelector("[data-boot]"); if (b) b.remove(); }
 supabase.auth.onAuthStateChange((event) => { if (event === "SIGNED_OUT") location.reload(); });
@@ -197,6 +306,7 @@ supabase.auth.onAuthStateChange((event) => { if (event === "SIGNED_OUT") locatio
   let session = null;
   try { ({ data: { session } } = await supabase.auth.getSession()); } catch (e) {}
   hideBoot();
-  if (session && session.user) startPortal(session.user);
-  else showLogin();
+  if (session && session.user) return route(session.user);
+  if (location.hash === "#admin") return showAdminLogin();
+  showLogin();
 })();
