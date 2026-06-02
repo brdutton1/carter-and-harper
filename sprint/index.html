@@ -3,21 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Web Studio Sprint — Carter &amp; Harper · Mission Control</title>
-  <meta name="description" content="A 10-day intensive: from zero to a live, client-approved website. The studio playbook for Carter & Harper." />
+  <title>Web Studio Sprint — Carter &amp; Harper · Studio HQ</title>
+  <meta name="description" content="The Carter & Harper studio learning portal: 10 days from zero to a live, client-approved website." />
   <meta name="robots" content="noindex" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Archivo+Black&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/sprint/styles.css" />
+  <link rel="stylesheet" href="/sprint/portal.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>" />
 </head>
-<body>
-  <div class="app">
-    <!-- mobile scrim -->
+<body class="preboot">
+
+  <!-- boot splash (removed by auth.js once session is resolved) -->
+  <div class="bootsplash" data-boot>
+    <div class="bootsplash__logo">🚀</div>
+    <div class="bootsplash__txt">Web Studio Sprint</div>
+  </div>
+
+  <!-- login screen (filled by auth.js when no session) -->
+  <div id="auth" hidden></div>
+
+  <!-- the portal (shown by auth.js after login) -->
+  <div class="app" data-app hidden>
     <div class="scrim" data-scrim></div>
 
-    <!-- SIDEBAR -->
     <aside class="side" data-side>
       <div class="side__brand">
         <div class="side__kicker">Carter &amp; Harper Studio</div>
@@ -50,12 +60,15 @@
       <nav class="nav" data-nav></nav>
 
       <div class="side__foot">
-        <a href="../" title="Back to the studio site">← Studio site</a>
+        <div class="userchip"><span class="userchip__av" data-user-av>?</span><span class="userchip__name" data-user-name>—</span></div>
+        <button class="btn-reset" data-logout>Log out</button>
+      </div>
+      <div class="side__foot side__foot--sub">
+        <a href="/">← Studio site</a>
         <button class="btn-reset" data-reset>Reset progress</button>
       </div>
     </aside>
 
-    <!-- MAIN -->
     <div class="main">
       <div class="topbar">
         <button class="topbar__menu" data-menu aria-label="Menu">☰</button>
@@ -68,7 +81,8 @@
 
   <div class="toast" data-toast></div>
 
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+  <script src="/sprint/data.js"></script>
+  <script src="/sprint/app.js"></script>
+  <script type="module" src="/sprint/auth.js"></script>
 </body>
 </html>

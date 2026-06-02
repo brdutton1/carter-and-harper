@@ -1,19 +1,19 @@
-/* Web Studio Sprint — Mission Control app */
-(function () {
+/* Web Studio Sprint — Mission Control app.
+   Exposes window.SprintApp.boot(ctx) — called by auth.js after a kid logs in.
+   ctx = { name, checks, onChange(checks), onLogout() } */
+window.SprintApp = (function () {
   "use strict";
 
   var DATA = window.SPRINT_DATA || [];
   var byId = {};
   DATA.forEach(function (s) { byId[s.id] = s; });
 
-  // Synthetic home + ordered section list (drives nav + pager).
-  var HOME = { id: "home", group: "start", type: "home", label: "Overview", short: "Overview" };
+  var HOME = { id: "home", group: "start", type: "home", label: "Dashboard", short: "Dashboard" };
   var ORDER = ["home", "adjust",
     "day1","day2","day3","day4","day5","day6","day7","day8","day9","day10",
     "prep","prompts","checklist","kickoff","handoff","acquire","resources","twoperson","dashboard","endcheck"];
   var SECTIONS = ORDER.map(function (id) { return id === "home" ? HOME : byId[id]; }).filter(Boolean);
 
-  // Flavor: what each day ships.
   var SHIP = {
     day1:"Signed client brief", day2:"Locked visual direction", day3:"Live rough preview",
     day4:"Clean desktop site", day5:"100% real content", day6:"Great on every screen",
@@ -21,44 +21,53 @@
     day10:"Portfolio + 3 emails sent"
   };
 
-  // ---------- progress storage ----------
-  var KEY = "wss.v1";
-  var state = load();
-  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || { checks: {} }; } catch (e) { return { checks: {} }; } }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  // ---------- state (provided by auth.js at boot) ----------
+  var CTX = null;
+  var state = { checks: {} };
+  function save() { if (CTX && typeof CTX.onChange === "function") CTX.onChange(state.checks); }
   function isChecked(id, i) { return !!state.checks[id + "#" + i]; }
   function setChecked(id, i, v) { if (v) state.checks[id + "#" + i] = 1; else delete state.checks[id + "#" + i]; save(); }
 
-  // Count task items in a section's html without rendering.
   var TASK_RE = /<li>\s*\[[ xX]\]/g;
   function taskTotal(s) { if (!s || !s.html) return 0; var m = s.html.match(TASK_RE); return m ? m.length : 0; }
   function taskDone(s) { var t = taskTotal(s), n = 0; for (var i = 0; i < t; i++) if (isChecked(s.id, i)) n++; return n; }
-
   function dayComplete(s) { var t = taskTotal(s); return t > 0 && taskDone(s) === t; }
+  function dayList() { return SECTIONS.filter(function (s) { return s.type === "day"; }); }
+  function firstIncompleteDay() { var d = dayList(); for (var i = 0; i < d.length; i++) if (!dayComplete(d[i])) return d[i]; return null; }
 
   function computeProgress() {
-    var days = SECTIONS.filter(function (s) { return s.type === "day"; });
     var dTot = 0, dDone = 0, shipped = 0;
-    days.forEach(function (s) { var t = taskTotal(s); dTot += t; dDone += taskDone(s); if (dayComplete(s)) shipped++; });
-    var allChecks = Object.keys(state.checks).length;
-    return { pct: dTot ? Math.round((dDone / dTot) * 100) : 0, shipped: shipped, checks: allChecks };
+    dayList().forEach(function (s) { var t = taskTotal(s); dTot += t; dDone += taskDone(s); if (dayComplete(s)) shipped++; });
+    return { pct: dTot ? Math.round((dDone / dTot) * 100) : 0, shipped: shipped, checks: Object.keys(state.checks).length };
   }
 
   // ---------- DOM refs ----------
-  var $nav = document.querySelector("[data-nav]");
-  var $view = document.querySelector("[data-view]");
-  var $ring = document.querySelector("[data-ring]");
-  var $ringNum = document.querySelector("[data-ringnum]");
-  var $shipped = document.querySelector("[data-shipped]");
-  var $shipped2 = document.querySelector("[data-shipped2]");
-  var $checks = document.querySelector("[data-checks]");
-  var $side = document.querySelector("[data-side]");
-  var $scrim = document.querySelector("[data-scrim]");
-  var $toast = document.querySelector("[data-toast]");
+  var $nav, $view, $ring, $ringNum, $shipped, $shipped2, $checks, $side, $scrim, $toast, $userName, $userAv;
   var RING_C = 169.646;
+  var booted = false;
+
+  function grabRefs() {
+    $nav = document.querySelector("[data-nav]");
+    $view = document.querySelector("[data-view]");
+    $ring = document.querySelector("[data-ring]");
+    $ringNum = document.querySelector("[data-ringnum]");
+    $shipped = document.querySelector("[data-shipped]");
+    $shipped2 = document.querySelector("[data-shipped2]");
+    $checks = document.querySelector("[data-checks]");
+    $side = document.querySelector("[data-side]");
+    $scrim = document.querySelector("[data-scrim]");
+    $toast = document.querySelector("[data-toast]");
+    $userName = document.querySelector("[data-user-name]");
+    $userAv = document.querySelector("[data-user-av]");
+  }
 
   // ---------- nav ----------
   function groupLabel(g) { return g === "start" ? "Start here" : g === "days" ? "The 10 days" : "Reference library"; }
+  function iconFor(s) {
+    var m = { home:"◆", adjust:"⚑", prep:"✔", prompts:"⌘", checklist:"☑", kickoff:"☎",
+      handoff:"⇲", acquire:"✉", resources:"★", twoperson:"⇄", dashboard:"▣", endcheck:"🏁" };
+    return m[s.id] || "•";
+  }
   function buildNav() {
     var html = "", lastGroup = null;
     SECTIONS.forEach(function (s) {
@@ -75,20 +84,13 @@
       el.addEventListener("click", function () { location.hash = el.getAttribute("data-go"); closeDrawer(); });
     });
   }
-  function iconFor(s) {
-    var m = { home:"◆", adjust:"⚑", prep:"✔", prompts:"⌘", checklist:"☑", kickoff:"☎",
-      handoff:"⇲", acquire:"✉", resources:"★", twoperson:"⇄", dashboard:"▣", endcheck:"🏁" };
-    return m[s.id] || "•";
-  }
   function refreshNav() {
     $nav.querySelectorAll("[data-go]").forEach(function (el) {
-      var id = el.getAttribute("data-go");
-      var s = byId[id];
+      var s = byId[el.getAttribute("data-go")];
       el.classList.toggle("is-done", !!(s && s.type === "day" && dayComplete(s)));
     });
   }
-
-  function refreshProgress(prevShipped) {
+  function refreshProgress() {
     var p = computeProgress();
     $ring.style.strokeDashoffset = (RING_C * (1 - p.pct / 100)).toFixed(2);
     $ringNum.textContent = p.pct + "%";
@@ -102,26 +104,20 @@
   function esc(t) { return (t || "").replace(/[&<>"]/g, function (c) { return { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]; }); }
   function activeIndex() { var id = (location.hash || "#home").slice(1); var i = ORDER.indexOf(id); return i < 0 ? 0 : i; }
 
-  // ---------- render a section ----------
+  // ---------- render ----------
   function render() {
     var id = (location.hash || "#home").slice(1);
     if (ORDER.indexOf(id) < 0) id = "home";
     var s = id === "home" ? HOME : byId[id];
 
-    // active nav
     $nav.querySelectorAll("[data-go]").forEach(function (el) {
       el.classList.toggle("is-active", el.getAttribute("data-go") === id);
     });
 
     $view.innerHTML = s.type === "home" ? renderHome() : renderSection(s);
-
-    if (s.type !== "home") {
-      enhance(s);
-    } else {
-      wireHome();
-    }
+    if (s.type === "home") wireHome(); else enhance(s);
     appendPager();
-    window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+    window.scrollTo({ top: 0 });
     refreshNav();
     refreshProgress();
   }
@@ -129,10 +125,7 @@
   function renderSection(s) {
     var tmp = document.createElement("div");
     tmp.innerHTML = s.html;
-    // title from first h2
-    var h2 = tmp.querySelector("h2");
-    if (h2) h2.remove();
-    // theme = first <p><em>..</em></p> (days)
+    var h2 = tmp.querySelector("h2"); if (h2) h2.remove();
     var theme = "";
     var fe = tmp.firstElementChild;
     if (fe && fe.tagName === "P" && fe.children.length === 1 && fe.firstElementChild && fe.firstElementChild.tagName === "EM") {
@@ -145,37 +138,30 @@
         '<h1>' + esc(s.label) + '</h1>' +
         (theme ? '<p class="shead__theme">' + esc(theme) + '</p>' : '') +
         '<div class="chips"><span class="chip">⚡ <b>Lesson</b> 30–45m</span><span class="chip">🔨 <b>Build</b> 3–4h</span><span class="chip">✅ <b>Review</b> 30m</span></div>' +
-        '<div class="sbar"><div class="sbar__track"><div class="sbar__fill" data-sfill></div></div>' +
-        '<div class="sbar__txt" data-stxt></div></div>' +
+        '<div class="sbar"><div class="sbar__track"><div class="sbar__fill" data-sfill></div></div><div class="sbar__txt" data-stxt></div></div>' +
         '</header>';
     } else {
       var eyebrow = s.id === "adjust" ? "Read this first" : "Reference library";
       head = '<header class="shead">' +
         '<div class="shead__eyebrow">' + iconFor(s) + ' &nbsp;' + eyebrow + '</div>' +
-        '<h1>' + esc(cleanTitle(s.label)) + '</h1>' +
+        '<h1>' + esc(s.label) + '</h1>' +
         (theme ? '<p class="shead__theme">' + esc(theme) + '</p>' : '') +
         ((taskTotal(s) > 0) ? '<div class="sbar"><div class="sbar__track"><div class="sbar__fill" data-sfill></div></div><div class="sbar__txt" data-stxt></div></div>' : '') +
         '</header>';
     }
     return head + '<div class="content"><div class="content-inner">' + tmp.innerHTML + '</div></div>';
   }
-  function cleanTitle(t) { return t; }
 
-  // ---------- enhance rendered content: checkboxes, copy, tint ----------
+  // ---------- enhance: checkboxes, copy, tint ----------
   function enhance(s) {
-    var root = $view;
-    // checkboxes
     var ti = 0;
-    root.querySelectorAll(".content li").forEach(function (li) {
-      var m = li.textContent.match(/^\s*\[([ xX])\]\s*/);
-      if (!m) return;
+    $view.querySelectorAll(".content li").forEach(function (li) {
+      if (!li.textContent.match(/^\s*\[([ xX])\]\s*/)) return;
       var idx = ti++;
-      // strip the "[ ] " prefix from the leading text node only
       stripPrefix(li);
-      var checked = isChecked(s.id, idx);
       li.classList.add("task");
       var inner = li.innerHTML;
-      li.innerHTML = '<label class="chk"><input type="checkbox"' + (checked ? " checked" : "") +
+      li.innerHTML = '<label class="chk"><input type="checkbox"' + (isChecked(s.id, idx) ? " checked" : "") +
         '><span class="box"></span><span class="lbl">' + inner + "</span></label>";
       var input = li.querySelector("input");
       input.addEventListener("change", function () {
@@ -184,48 +170,35 @@
         updateSectionBar(s);
         var now = refreshProgress();
         refreshNav();
-        if (s.type === "day" && dayComplete(s)) {
-          if (now.shipped > was) { celebrate(s); markHeaderShipped(); }
-        } else { unmarkHeaderShipped(s); }
+        if (s.type === "day" && dayComplete(s)) { if (now.shipped > was) { celebrate(s); markHeaderShipped(); } }
+        else { unmarkHeaderShipped(s); }
       });
     });
     updateSectionBar(s);
 
-    // copy buttons + bad/good tint
-    root.querySelectorAll(".content pre").forEach(function (pre) {
+    $view.querySelectorAll(".content pre").forEach(function (pre) {
       var code = pre.querySelector("code") || pre;
       var txt = code.textContent || "";
-      var wrap = document.createElement("div");
-      wrap.className = "codewrap";
-      pre.parentNode.insertBefore(wrap, pre);
-      wrap.appendChild(pre);
-
+      var wrap = document.createElement("div"); wrap.className = "codewrap";
+      pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(pre);
       var tone = detectTone(txt, wrap);
       if (tone) {
         wrap.classList.add(tone === "bad" ? "is-bad" : "is-good");
-        var tag = document.createElement("span");
-        tag.className = "codetag";
-        tag.textContent = tone === "bad" ? "Don't" : "Do this";
-        wrap.appendChild(tag);
+        var tag = document.createElement("span"); tag.className = "codetag";
+        tag.textContent = tone === "bad" ? "Don't" : "Do this"; wrap.appendChild(tag);
       }
-      var btn = document.createElement("button");
-      btn.className = "copybtn";
-      btn.innerHTML = "⧉ Copy";
+      var btn = document.createElement("button"); btn.className = "copybtn"; btn.innerHTML = "⧉ Copy";
       btn.addEventListener("click", function () {
-        copy(txt);
-        btn.classList.add("copied"); btn.innerHTML = "✓ Copied";
+        copy(txt); btn.classList.add("copied"); btn.innerHTML = "✓ Copied";
         setTimeout(function () { btn.classList.remove("copied"); btn.innerHTML = "⧉ Copy"; }, 1400);
       });
       wrap.appendChild(btn);
     });
   }
-
   function detectTone(txt, wrap) {
     if (/^\s*BAD PROMPT/i.test(txt)) return "bad";
     if (/^\s*GOOD PROMPT/i.test(txt)) return "good";
-    // look back at the previous paragraph (prompt library uses "**Prompt 1a — BAD**")
-    var prev = wrap.previousElementSibling;
-    var hops = 0;
+    var prev = wrap.previousElementSibling, hops = 0;
     while (prev && hops < 2) {
       var pt = prev.textContent || "";
       if (/\bBAD\b/.test(pt) && /prompt/i.test(pt)) return "bad";
@@ -234,26 +207,20 @@
     }
     return null;
   }
-
   function stripPrefix(li) {
-    // remove leading "[ ] " from first text-bearing node
     var walker = document.createTreeWalker(li, NodeFilter.SHOW_TEXT, null);
     var node = walker.nextNode();
     while (node && !node.nodeValue.trim()) node = walker.nextNode();
     if (node) node.nodeValue = node.nodeValue.replace(/^\s*\[[ xX]\]\s*/, "");
   }
-
   function updateSectionBar(s) {
-    var fill = $view.querySelector("[data-sfill]");
-    var txt = $view.querySelector("[data-stxt]");
+    var fill = $view.querySelector("[data-sfill]"), txt = $view.querySelector("[data-stxt]");
     if (!fill) return;
-    var t = taskTotal(s), d = taskDone(s), pct = t ? Math.round(d / t * 100) : 0;
-    fill.style.width = pct + "%";
-    if (txt) {
-      txt.innerHTML = (t === d && t > 0)
-        ? '<span class="done">✓ All ' + t + ' done — ' + (s.type === "day" ? "day shipped." : "complete.") + "</span>"
-        : d + " of " + t + " checked";
-    }
+    var t = taskTotal(s), d = taskDone(s);
+    fill.style.width = (t ? Math.round(d / t * 100) : 0) + "%";
+    if (txt) txt.innerHTML = (t === d && t > 0)
+      ? '<span class="done">✓ All ' + t + ' done — ' + (s.type === "day" ? "day shipped." : "complete.") + "</span>"
+      : d + " of " + t + " checked";
   }
   function markHeaderShipped() {
     var eb = $view.querySelector(".shead__eyebrow");
@@ -264,83 +231,94 @@
     var pill = $view.querySelector(".shead__eyebrow .pill");
     if (pill && !dayComplete(s)) pill.remove();
   }
-
   function copy(t) {
-    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).catch(fallback); }
-    else fallback();
-    function fallback() {
-      var ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta);
-      ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta);
-    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(fb); else fb();
+    function fb() { var ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); }
   }
-
-  function celebrate(s) {
-    toast('Day ' + s.day + ' shipped <span class="em">🚀</span>');
-  }
+  function celebrate(s) { toast('Day ' + s.day + ' shipped <span class="em">🚀</span>'); fireConfetti(); }
   var toastTimer;
-  function toast(html) {
-    $toast.innerHTML = html; $toast.classList.add("show");
-    clearTimeout(toastTimer); toastTimer = setTimeout(function () { $toast.classList.remove("show"); }, 2600);
+  function toast(html) { $toast.innerHTML = html; $toast.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(function () { $toast.classList.remove("show"); }, 2600); }
+  function fireConfetti() {
+    var c = document.createElement("div"); c.className = "confetti";
+    var cols = ["#ff8906","#f25f4c","#e53170","#34d399","#fffffe"];
+    for (var i = 0; i < 36; i++) {
+      var p = document.createElement("i");
+      p.style.left = Math.round(Math.random() * 100) + "vw";
+      p.style.background = cols[i % cols.length];
+      p.style.animationDelay = (Math.random() * 0.25) + "s";
+      p.style.transform = "rotate(" + Math.round(Math.random() * 360) + "deg)";
+      c.appendChild(p);
+    }
+    document.body.appendChild(c);
+    setTimeout(function () { c.remove(); }, 2200);
   }
 
   // ---------- pager ----------
   function appendPager() {
-    var i = activeIndex();
-    var prev = SECTIONS[i - 1], next = SECTIONS[i + 1];
+    var i = activeIndex(), prev = SECTIONS[i - 1], next = SECTIONS[i + 1];
     var html = '<div class="pager">';
-    html += prev
-      ? '<a data-go="' + prev.id + '"><span class="dir">← Previous</span><span class="ttl">' + esc(prev.short || prev.label) + "</span></a>"
-      : '<a class="empty"></a>';
-    html += next
-      ? '<a class="next" data-go="' + next.id + '"><span class="dir">Next →</span><span class="ttl">' + esc(next.short || next.label) + "</span></a>"
-      : '<a class="empty"></a>';
+    html += prev ? '<a data-go="' + prev.id + '"><span class="dir">← Previous</span><span class="ttl">' + esc(prev.short || prev.label) + "</span></a>" : '<a class="empty"></a>';
+    html += next ? '<a class="next" data-go="' + next.id + '"><span class="dir">Next →</span><span class="ttl">' + esc(next.short || next.label) + "</span></a>" : '<a class="empty"></a>';
     html += "</div>";
     $view.insertAdjacentHTML("beforeend", html);
     $view.querySelectorAll(".pager [data-go]").forEach(function (el) {
-      if (el.classList.contains("empty")) return;
-      el.addEventListener("click", function () { location.hash = el.getAttribute("data-go"); });
+      if (!el.classList.contains("empty")) el.addEventListener("click", function () { location.hash = el.getAttribute("data-go"); });
     });
   }
 
-  // ---------- home ----------
+  // ---------- dashboard (home) ----------
   function renderHome() {
-    var tiles = SECTIONS.filter(function (s) { return s.type === "day"; }).map(function (s) {
+    var p = computeProgress();
+    var next = firstIncompleteDay();
+    var name = (CTX && CTX.name) || "Studio";
+    var greeting = p.shipped === 0 ? "Let's ship Day 1." : next ? ("You're on Day " + next.day + ".") : "All ten days shipped. 🎉";
+
+    var cta = next
+      ? '<button class="btn btn--primary" data-go="' + next.id + '">' + (p.shipped === 0 ? "Start Day 1 →" : "Continue Day " + next.day + " →") + '</button>'
+      : '<button class="btn btn--primary" data-go="endcheck">See the finish line →</button>';
+
+    var tiles = dayList().map(function (s) {
       var done = dayComplete(s);
-      return '<div class="daytile' + (done ? " is-done" : "") + '" data-go="' + s.id + '">' +
-        '<div class="daytile__badge">✓</div>' +
-        '<div class="daytile__n">' + s.day + "</div>" +
-        '<div class="daytile__l">' + esc(s.label) + "</div>" +
-        '<div class="daytile__ship">ships → ' + esc(SHIP[s.id] || "") + "</div></div>";
+      var current = !done && next && s.id === next.id;
+      var cls = done ? "is-done" : current ? "is-current" : "is-upcoming";
+      return '<button class="jtile ' + cls + '" data-go="' + s.id + '">' +
+        '<span class="jtile__dot">' + (done ? "✓" : s.day) + "</span>" +
+        '<span class="jtile__l">' + esc(s.label) + "</span>" +
+        '<span class="jtile__s">' + esc(SHIP[s.id] || "") + "</span>" +
+        (current ? '<span class="jtile__tag">You are here</span>' : "") +
+        "</button>";
     }).join("");
 
     return '' +
-    '<section class="hero">' +
-      '<div class="hero__eyebrow">Carter &amp; Harper · Mission Control</div>' +
-      '<h1>Web Studio<br><span class="g">Sprint</span></h1>' +
-      '<p class="hero__lead">Ten days. One real client. From zero to a live website a senior designer would sign off on.</p>' +
-      '<div class="hero__cta">' +
-        '<button class="btn btn--primary" data-go="day1">Start Day 1 →</button>' +
-        '<button class="btn btn--ghost" data-go="adjust">Read the game plan</button>' +
+    '<section class="dash-hero">' +
+      '<div class="dash-hero__top">' +
+        '<div>' +
+          '<div class="dash-hero__eyebrow">Web Studio Sprint · Mission Control</div>' +
+          '<h1 class="dash-hero__h">Hey ' + esc(name) + ' 👋</h1>' +
+          '<p class="dash-hero__sub">' + esc(greeting) + ' Ten days, one real client, from zero to live.</p>' +
+          '<div class="dash-hero__cta">' + cta +
+            '<button class="btn btn--ghost" data-go="prompts">Open the Prompt Library</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="dash-stat">' +
+          '<div class="dash-stat__pct">' + p.pct + '%</div>' +
+          '<div class="dash-stat__track"><div class="dash-stat__fill" style="width:' + p.pct + '%"></div></div>' +
+          '<div class="dash-stat__meta"><b>' + p.shipped + ' / 10</b> days shipped · <span>' + p.checks + ' checks</span></div>' +
+        '</div>' +
       '</div>' +
     '</section>' +
 
-    '<div class="bigidea">' +
-      '<h3>The one idea this whole sprint runs on</h3>' +
-      '<p>Claude Code can build a production website in an afternoon. <strong>The bottleneck is not the AI — it is the human briefing it.</strong> A vague prompt makes generic slop. A specific, referenced, constrained prompt makes a site that looks like a senior designer made it.</p>' +
-      '<p>You are not learning to code. You are learning to be the <strong>creative director</strong> who pulls excellent work out of Claude Code. The site you ship for your first real client is the proof.</p>' +
+    '<div class="sectionlabel">How the sprint works</div>' +
+    '<div class="how">' +
+      '<div class="how__card"><div class="how__n">01</div><h4>You direct, Claude builds</h4><p>You\'re not coding. You write sharp, specific briefs and Claude Code builds the site. The better the brief, the better the site.</p></div>' +
+      '<div class="how__card"><div class="how__n">02</div><h4>Driver & Director</h4><p>One of you runs Claude Code, the other reviews every result against the checklist. Swap seats at the mid-day break.</p></div>' +
+      '<div class="how__card"><div class="how__n">03</div><h4>Tick as you ship</h4><p>Each day has a lesson, a build block, and a checklist. Tick items as you finish — the day turns green and your progress saves to your account.</p></div>' +
     '</div>' +
 
-    '<div class="sectionlabel">How the two of you run it</div>' +
-    '<div class="roles">' +
-      '<div class="role role--driver"><div class="role__tag">The Driver</div><p>Hands on Claude Code. Writes and sends the prompt, runs the commands, ships the change.</p></div>' +
-      '<div class="role role--director"><div class="role__tag">The Director</div><p>Eyes on the output. Runs the Review Checklist, decides what\'s wrong, calls the next move. Nothing ships until the Director signs off.</p></div>' +
-    '</div>' +
-    '<p class="swap"><b>Swap seats at the mid-day break, every day.</b> Both of you build the prompting muscle.</p>' +
+    '<div class="sectionlabel">Your 10-day journey</div>' +
+    '<div class="journey">' + tiles + '</div>' +
 
-    '<div class="sectionlabel">The ten days</div>' +
-    '<div class="map">' + tiles + "</div>" +
-
-    '<div class="sectionlabel">The finish line — Day 10 pass/fail</div>' +
+    '<div class="sectionlabel">The finish line</div>' +
     '<div class="finish"><h3>You\'re a real studio when all five are true:</h3><ul>' +
       '<li><span>1</span> The client\'s site is live on their own domain.</li>' +
       '<li><span>2</span> The client has approved it in writing.</li>' +
@@ -355,29 +333,36 @@
     });
   }
 
-  // ---------- drawer ----------
+  // ---------- chrome (drawer / reset / logout / keyboard) ----------
   function openDrawer() { $side.classList.add("open"); $scrim.classList.add("show"); }
   function closeDrawer() { $side.classList.remove("open"); $scrim.classList.remove("show"); }
-  document.querySelector("[data-menu]").addEventListener("click", openDrawer);
-  $scrim.addEventListener("click", closeDrawer);
+  function wireChrome() {
+    var menu = document.querySelector("[data-menu]"); if (menu) menu.addEventListener("click", openDrawer);
+    $scrim.addEventListener("click", closeDrawer);
+    var reset = document.querySelector("[data-reset]");
+    if (reset) reset.addEventListener("click", function () {
+      if (confirm("Reset all your checklist progress? This can't be undone.")) { state = { checks: {} }; save(); render(); toast("Progress reset."); }
+    });
+    var logout = document.querySelector("[data-logout]");
+    if (logout) logout.addEventListener("click", function () { if (CTX && CTX.onLogout) CTX.onLogout(); });
+    document.addEventListener("keydown", function (e) {
+      if (/input|textarea|select/i.test((e.target.tagName || ""))) return;
+      if (e.key === "ArrowRight" || e.key === "j") { var n = SECTIONS[activeIndex() + 1]; if (n) location.hash = n.id; }
+      if (e.key === "ArrowLeft" || e.key === "k") { var pv = SECTIONS[activeIndex() - 1]; if (pv) location.hash = pv.id; }
+    });
+    window.addEventListener("hashchange", render);
+  }
 
-  // ---------- reset ----------
-  document.querySelector("[data-reset]").addEventListener("click", function () {
-    if (confirm("Reset all checklist progress? This can't be undone.")) {
-      state = { checks: {} }; save(); render();
-      toast("Progress reset.");
-    }
-  });
+  // ---------- public boot ----------
+  function boot(ctx) {
+    CTX = ctx || {};
+    state = { checks: (ctx && ctx.checks) || {} };
+    grabRefs();
+    if ($userName) $userName.textContent = CTX.name || "Studio";
+    if ($userAv) $userAv.textContent = (CTX.name || "?").charAt(0).toUpperCase();
+    if (!booted) { wireChrome(); buildNav(); booted = true; }
+    render();
+  }
 
-  // ---------- keyboard ----------
-  document.addEventListener("keydown", function (e) {
-    if (/input|textarea|select/i.test((e.target.tagName || ""))) return;
-    if (e.key === "ArrowRight" || e.key === "j") { var n = SECTIONS[activeIndex() + 1]; if (n) location.hash = n.id; }
-    if (e.key === "ArrowLeft" || e.key === "k") { var p = SECTIONS[activeIndex() - 1]; if (p) location.hash = p.id; }
-  });
-
-  // ---------- boot ----------
-  window.addEventListener("hashchange", render);
-  buildNav();
-  render();
+  return { boot: boot };
 })();
