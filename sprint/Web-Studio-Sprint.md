@@ -921,6 +921,8 @@ dashboard to activate the endpoint. Don't restyle the form — wiring only.
 
 Then **test it for real**: submit the form yourself and confirm the email lands. A contact form that silently fails is the single most common way a small-business site quietly loses customers. Do not skip this.
 
+> **🔒 Security gate — before you point the domain (10 min).** Default the contact form to **Formspree or a Vercel serverless function** — a brochure site does not need a database. But if you used **Supabase anywhere** (stored submissions, a login, anything), do not go live until you run **Prompt 11b**: *"show me the RLS policies on every table and prove they work."* Every table must have RLS on, the policies must be tested with the public key (a visitor can submit but can't read others' data), and no secret key may appear in client code — secrets live in env only. Fix anything that fails first. No exceptions.
+
 **5. Walk the client through requesting changes (15 min).** Decide your channel — one email thread, or one text thread. Tell the client plainly: "When you want a change, send it here. We'll confirm and tell you when it's live." Don't promise instant turnaround; set a real expectation (e.g., "within 3 business days").
 
 **6. Write the handoff doc.** Keep it to one page. Have Claude draft it, then you edit it in plain language:
@@ -955,6 +957,7 @@ The client's website is **live on their real domain**, served over HTTPS, with a
 - [ ] `www` and apex resolve to one canonical URL via 301 redirect; no split traffic.
 - [ ] SSL certificate is active; no "not secure" warning anywhere.
 - [ ] Contact form submitted as a real test, and the email arrived in the client's inbox.
+- [ ] If the site uses Supabase: RLS is on and **proven** on every table with the public key, no service-role key is in client code, and secrets live only in env. (You ran *"show me the RLS policies on every table and prove they work."*)
 - [ ] Analytics is installed and recording visits (your test visit shows up).
 - [ ] No 404s on any nav link on the live domain.
 - [ ] One-page handoff doc delivered to the client, jargon-free.
@@ -1075,7 +1078,7 @@ Locomotive (locomotive.ca) and Pentagram (pentagram.com) for how a single projec
 - [ ] **MCP connectors verified one-by-one** inside Claude Code — test each, don't assume. Run a tiny read action through each so you see a real success, not a green dot:
   - [ ] **GitHub** — list your repos.
   - [ ] **Vercel** — list projects (or confirm the account links).
-  - [ ] **Supabase** — list projects (you likely won't need a database, but verify now so it's not a Day-6 surprise).
+  - [ ] **Supabase** — list projects (you likely won't need a database, but verify now so it's not a Day-6 surprise). **Default rule:** contact forms use Formspree or a Vercel serverless function; only reach for Supabase if the project genuinely needs to store and read data. If Supabase *is* used, RLS enabled and tested on every table is mandatory before go-live (see the Security checklist).
   - [ ] **Figma** — open/read one file.
   - [ ] **Canva** — list designs or pull one asset.
   - [ ] **Google Drive** — read a file from the project folder below.
@@ -1561,6 +1564,34 @@ Then: draft a 120-word version I can adapt into outreach emails to 3 local busin
 
 ---
 
+### 11. Security & RLS-Verification Prompts
+
+If the site touches Supabase (a database) **anywhere** — a contact form that stores submissions, a login, anything — you run this BEFORE you point the domain. Make Claude *prove* it; never accept "looks secure."
+
+**Prompt 11a — BAD**
+
+```
+is the contact form secure?
+```
+
+**Prompt 11b — GOOD**
+
+```
+We use Supabase for {{FEATURE — e.g. storing contact submissions}}. Before we deploy, do a security pass and PROVE each point — don't just assert it:
+
+1. List every table in the project and whether RLS (row-level security) is ENABLED on each.
+2. For every table, show me the policies (select / insert / update / delete) in plain English.
+3. Prove it with the ANON (public) key: show that a visitor can do only what they should (e.g. insert a submission) and CANNOT read other people's rows. Show the actual query and the permission error it returns.
+4. Confirm the service-role key (and any secret) appears NOWHERE in client code or the repo — only the public anon/publishable key is in the browser.
+5. Confirm every secret/key lives in environment variables (Vercel) or Supabase function secrets, never committed to git.
+
+List anything that fails, fix it, and re-prove it before we go live.
+```
+
+**Why the good one wins:** "is it secure?" gets a reassuring shrug. The good prompt forces Claude to *enumerate every table, show the real policies, and demonstrate with the public key that private data can't be read* — proof you can see, not a promise. This is the single most important prompt before any deploy that touches a database.
+
+---
+
 ## The Director's Review Checklist
 
 Run this on every Claude Code output before you accept it. Desktop first, then resize the browser narrow to phone width and run it again. Nothing ships, nothing goes to the client, until every box is checked. If a box fails, you don't fix it by hand — you write the next prompt. Bad prompt: "make it better." Good prompt: the exact failing line below, quoted.
@@ -1632,6 +1663,15 @@ Run this on every Claude Code output before you accept it. Desktop first, then r
 - [ ] Headings use real structure — one main H1 per page, then H2s under it (ask Claude to confirm)
 - [ ] The client's town shows up in the copy (e.g. "Pagosa Springs") so locals find them
 - [ ] There's a favicon and a social-share preview image, so the link looks legit when texted or posted
+
+### Security (only if the site uses a database / Supabase)
+*Skip this if the site is static with a Formspree or serverless contact form. The moment any Supabase table exists, every box here is mandatory — and nothing goes live until they all pass.*
+- [ ] No-database sites use **Formspree or a Vercel serverless function** for the contact form — not Supabase. (Don't stand up a database you don't need.)
+- [ ] **RLS (row-level security) is ON for every table.** Ask Claude Code: *"show me the RLS policies on every table and prove they work."*
+- [ ] Policies are **tested with the anon/publishable key**: a visitor can do only what they should (e.g. submit the form) and **cannot read** anyone's stored data.
+- [ ] **No service-role key — or any secret — in client code or the repo.** Only the public anon/publishable key ever ships to the browser.
+- [ ] Secrets and keys live in **Vercel environment variables / Supabase function secrets only**, never committed to git.
+- [ ] `get_advisors` (Supabase security) comes back clean — no "RLS disabled" or exposed-table warnings.
 
 ---
 
@@ -2283,5 +2323,7 @@ This is the bar. Not "we tried hard." Not "it's basically done." Five boxes. Eit
 
 - [ ] **BOTH Carter and Harper can independently brief Claude Code to build a new site from scratch**
   Prove it: each of you, alone, opens a fresh Claude Code session and writes a first build prompt for an imaginary new client — naming a reference site, a color and type direction, the page sections, and the vibe in plain words — without the other one helping. If only one of you can do it, you don't have a studio, you have one director and one passenger. Both, or it's not checked.
+
+**Non-negotiable security gate (every site you ship, this client and every future one):** if the site uses a database, RLS is on and *proven* on every table with the public key, and no secret key lives in client code. No site goes live until this passes — period.
 
 If you hit all five, you're a real studio now. You have a live client, a signed-off result, a portfolio that proves it, leads in motion, and two directors who can each pull excellent work out of Claude Code. That's not a school project. That's a business with a track record. Go get client #2.
