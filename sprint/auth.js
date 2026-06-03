@@ -4,7 +4,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY, FUNCTIONS_URL, ACCOUNTS } from "/sprint/config.js";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Explicit persistence so a login survives reloads, tab closes, and browser restarts
+// (default behavior of supabase-js v2, made explicit so it can't drift silently).
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    storageKey: "wss-auth"
+  }
+});
 const $auth = document.getElementById("auth");
 const emailFor = (name) => (ACCOUNTS.find(a => a.name.toLowerCase() === String(name).toLowerCase()) || {}).email;
 
@@ -47,8 +56,8 @@ async function callFn(path, body) {
       body: JSON.stringify(body)
     });
     data = await res.json().catch(() => ({}));
-  } catch (e) { return { ok: false, data: { error: "Network error — check your connection." } }; }
-  return { ok: res.ok && data.ok, data };
+  } catch (e) { return { ok: false, status: 0, data: { error: "Network error — check your connection." } }; }
+  return { ok: res.ok && data.ok, status: res.status, data };
 }
 
 // ---------- portal handoff ----------
@@ -163,7 +172,12 @@ function openForm(name, claimed, mode) {
       if (password.length < 8) return showErr("Password must be at least 8 characters.");
       setBusy(go, "Creating…");
       const r = await callFn("claim-account", { name, accessCode: code, password });
-      if (!r.ok) { setBusy(go, false, "Create my login →"); return showErr(r.data.error || "Couldn't create the login."); }
+      if (!r.ok) {
+        // Defense-in-depth: account is already claimed → switch to password form
+        // (so a drift in `claimed` can never force an unwanted re-claim).
+        if (r.status === 409) { setBusy(go, false, "Create my login →"); return openForm(name, true); }
+        setBusy(go, false, "Create my login →"); return showErr(r.data.error || "Couldn't create the login.");
+      }
       const { error } = await supabase.auth.signInWithPassword({ email: emailFor(name), password });
       if (error) { setBusy(go, false, "Create my login →"); return showErr(error.message); }
       const { data: { user } } = await supabase.auth.getUser();
@@ -182,7 +196,10 @@ function openForm(name, claimed, mode) {
     };
     go.addEventListener("click", signin);
     pw.addEventListener("keydown", e => { if (e.key === "Enter") signin(); });
-    form.querySelector("[data-forgot]").addEventListener("click", () => openReset(name));
+    form.querySelector("[data-forgot]").addEventListener("click", () => {
+      if (!confirm("This will wipe " + name + "'s current password and require the studio code to set a new one. Are you sure?")) return;
+      openReset(name);
+    });
   }
   setTimeout(() => { const f = form.querySelector("input"); if (f) f.focus(); }, 30);
 }
@@ -258,7 +275,10 @@ async function showAdminLogin() {
     };
     go.addEventListener("click", signin);
     pw.addEventListener("keydown", e => { if (e.key === "Enter") signin(); });
-    $auth.querySelector("[data-forgot]").addEventListener("click", () => openAdminReset(name));
+    $auth.querySelector("[data-forgot]").addEventListener("click", () => {
+      if (!confirm("This will wipe your admin password. You'll need the studio code to set a new one. Continue?")) return;
+      openAdminReset(name);
+    });
   } else {
     const codeEl = $auth.querySelector("[data-code]");
     const claim = async () => {
@@ -266,7 +286,11 @@ async function showAdminLogin() {
       if (pw.value.length < 8) return showErr("Password must be at least 8 characters.");
       setBusy(go, "Creating…");
       const r = await callFn("claim-account", { name, accessCode: codeEl.value.trim(), password: pw.value });
-      if (!r.ok) { setBusy(go, false, "Create admin login →"); return showErr(r.data.error || "Couldn't create the login."); }
+      if (!r.ok) {
+        // Already claimed → reload into the password form (no unwanted re-claim).
+        if (r.status === 409) { setBusy(go, false, "Create admin login →"); return showAdminLogin(); }
+        setBusy(go, false, "Create admin login →"); return showErr(r.data.error || "Couldn't create the login.");
+      }
       const { error } = await supabase.auth.signInWithPassword({ email: emailFor(name), password: pw.value });
       if (error) { setBusy(go, false, "Create admin login →"); return showErr(error.message); }
       const { data: { user } } = await supabase.auth.getUser();

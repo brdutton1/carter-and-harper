@@ -42,3 +42,39 @@ Cross-user reads happen **only** through `SECURITY DEFINER` RPCs that check the 
 - Set `STUDIO_ACCESS_CODE` as a Supabase **function secret** (Edge Functions → Secrets) so it's
   env-only rather than relying on the in-function default.
 - Enable Supabase Auth **leaked-password protection** (HaveIBeenPwned check).
+
+## Persistence guarantees (claim once, password forever)
+
+The portal is designed so that once a user (kid or admin) sets their password, they never see
+the "set up with access code" form again — unless they explicitly choose to reset. The model:
+
+- **Sessions persist on the device.** `createClient` is configured with
+  `persistSession: true`, `autoRefreshToken: true`, `storageKey: "wss-auth"`. The token lives
+  in `localStorage` and refreshes silently for the lifetime of the refresh token (~1 year by
+  default). A logged-in user stays logged in across reloads, tab closes, and browser restarts.
+- **`profiles.claimed` is the source of truth for "needs the access code".** Only flipped to
+  `true` by `claim-account` (first-time setup) and back to `false` by `reset-account` or
+  `admin-action: reset_password`. **Nothing else** writes to this column — no triggers, no
+  automatic flows, no boot path.
+- **Forensic trail.** A `profile_audit` table + trigger records every change to `claimed`
+  with timestamp + `auth.uid()` of the writer. Edge-function writes (service role) show
+  `changed_by = NULL`, distinguishing them from any future client-side writes. Inspect via
+  the admin-only `admin_audit()` RPC, or by querying `public.profile_audit` directly.
+- **Accident-resistant resets.** Both kid and admin "Forgot your password?" links require a
+  two-step `confirm()` before opening the reset form. The admin dashboard's "Reset password"
+  per-kid button is also behind a confirm + admin-JWT-gated edge function.
+- **409 fallback.** If `claim-account` ever rejects with 409 ("already claimed"), the client
+  automatically transitions to the password-only form instead of showing an error — so even
+  if the `claimed` flag drifted, the worst the user sees is "type your password" (never an
+  unwanted re-claim that would overwrite a real password).
+
+### Operating rule for the maintainer
+Do **not** invoke `reset-account` / `admin-action: reset_password` outside of an explicit
+user-initiated flow. Running these via curl/eval as "test cleanup" puts the affected user
+back in claim-mode and will surface as "the access code keeps reappearing."
+
+### Why no `has_password` RPC?
+An earlier draft proposed deriving "is the password real?" from `auth.users.encrypted_password
+IS NOT NULL`. That fails after a reset: `reset-account` scrambles the password to a non-null
+but unusable value, so `encrypted_password` is misleading. `profiles.claimed` is the only
+reliable signal; the audit trail and accident guards above are what make it iron-clad.
