@@ -375,6 +375,8 @@ window.SprintApp = (function () {
     grabRefs();
     if ($userName) $userName.textContent = CTX.name || "Studio";
     if ($userAv) $userAv.textContent = (CTX.name || "?").charAt(0).toUpperCase();
+    var back = document.querySelector("[data-back]");
+    if (back) { if (CTX.onBack) { back.hidden = false; back.onclick = function () { CTX.onBack(); }; } else { back.hidden = true; } }
     if (!booted) { wireChrome(); buildNav(); booted = true; }
     render();
   }

@@ -18,7 +18,31 @@ function rel(iso) {
 }
 function daysSince(iso) { if (!iso) return Infinity; return (Date.now() - new Date(String(iso).replace(" ", "T")).getTime()) / 86400000; }
 
-export async function renderAdmin({ supabase, container, adminName, analyze, SHIP, signOut }) {
+export async function renderAdmin({ supabase, container, adminName, adminId, analyze, SHIP, signOut }) {
+  // Let the creator walk the full participant experience, with their own private progress.
+  async function walkSprint() {
+    let checks = {};
+    try {
+      const { data } = await supabase.from("sprint_progress").select("checks").eq("user_id", adminId).maybeSingle();
+      if (data && data.checks) checks = data.checks;
+    } catch (e) {}
+    let saveTimer = null;
+    const onChange = (c) => {
+      try { localStorage.setItem("wss.v1." + adminId, JSON.stringify({ checks: c })); } catch (e) {}
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        supabase.from("sprint_progress").upsert({ user_id: adminId, checks: c, updated_at: new Date().toISOString() })
+          .then(({ error }) => { if (error) console.warn("save failed:", error.message); });
+      }, 600);
+    };
+    container.hidden = true;
+    document.querySelector("[data-app]").hidden = false;
+    window.SprintApp.boot({
+      name: adminName, checks, onChange, onLogout: signOut,
+      onBack: () => { document.querySelector("[data-app]").hidden = true; container.hidden = false; }
+    });
+  }
+
   async function adminAction(action, target) {
     const { data } = await supabase.auth.getSession();
     const token = data.session ? data.session.access_token : "";
@@ -97,7 +121,8 @@ export async function renderAdmin({ supabase, container, adminName, analyze, SHI
           '<div><div class="admin__eyebrow">Studio HQ · Admin</div>' +
             '<h1 class="admin__title">Hey ' + esc(adminName) + ' 👋</h1>' +
             '<div class="admin__date">' + esc(dateLabel) + '</div></div>' +
-          '<div class="admin__btns"><button class="abtn" data-refresh>↻ Refresh</button>' +
+          '<div class="admin__btns"><button class="abtn abtn--primary" data-walk>👀 Walk the sprint</button>' +
+            '<button class="abtn" data-refresh>↻ Refresh</button>' +
             '<button class="abtn abtn--ghost" data-logout>Log out</button></div>' +
         '</div>' +
         (kids.length ? '<div class="admin__grid">' + cards + '</div>'
@@ -107,6 +132,7 @@ export async function renderAdmin({ supabase, container, adminName, analyze, SHI
 
     container.querySelector("[data-refresh]").addEventListener("click", load);
     container.querySelector("[data-logout]").addEventListener("click", signOut);
+    container.querySelector("[data-walk]").addEventListener("click", walkSprint);
     container.querySelectorAll(".abtn[data-act]").forEach(btn => {
       btn.addEventListener("click", async () => {
         const act = btn.getAttribute("data-act"), target = btn.getAttribute("data-target");

@@ -78,7 +78,7 @@ async function startAdmin(user, name) {
   document.body.classList.remove("preboot");
   const mod = await import("/sprint/admin.js");
   mod.renderAdmin({
-    supabase, container: el, adminName: name || "Admin",
+    supabase, container: el, adminName: name || "Admin", adminId: user.id,
     analyze: window.SprintApp.analyze, SHIP: window.SprintApp.SHIP, signOut: doLogout
   });
 }

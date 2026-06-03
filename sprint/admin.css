@@ -42,6 +42,8 @@
 .abtn:hover { border-color: var(--accent); }
 .abtn:disabled { opacity: .6; cursor: default; }
 .abtn--ghost:hover { border-color: var(--bad); color: var(--bad); }
+.abtn--primary { background: var(--grad); border-color: transparent; color: #1a1020; }
+.abtn--primary:hover { border-color: transparent; transform: translateY(-1px); }
 
 .admin__foot { margin-top: 30px; color: var(--muted2); font-size: .82rem; }
 .admin__foot a { color: var(--muted2); } .admin__foot a:hover { color: var(--accent); }
