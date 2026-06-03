@@ -123,6 +123,7 @@ export async function renderAdmin({ supabase, container, adminName, adminId, ana
             '<div class="admin__date">' + esc(dateLabel) + '</div></div>' +
           '<div class="admin__btns"><button class="abtn abtn--primary" data-walk>👀 Walk the sprint</button>' +
             '<button class="abtn" data-refresh>↻ Refresh</button>' +
+            '<a class="abtn" href="/">← Site</a>' +
             '<button class="abtn abtn--ghost" data-logout>Log out</button></div>' +
         '</div>' +
         (kids.length ? '<div class="admin__grid">' + cards + '</div>'

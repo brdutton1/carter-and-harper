@@ -91,6 +91,7 @@ async function showLogin(message) {
   document.querySelector("[data-app]").hidden = true;
   $auth.hidden = false;
   $auth.innerHTML =
+    '<a class="login__home" href="/">← Back to site</a>' +
     '<div class="login">' +
       '<div class="login__glow"></div>' +
       '<div class="login__card">' +
@@ -228,7 +229,7 @@ async function showAdminLogin() {
     if (a) { claimed = a.claimed; name = a.name; }
   } catch (e) {}
   $auth.innerHTML =
-    '<div class="login"><div class="login__glow"></div><div class="login__card">' +
+    '<a class="login__home" href="/">← Back to site</a><div class="login"><div class="login__glow"></div><div class="login__card">' +
       '<div class="login__brand">🔒 Studio Admin</div>' +
       '<h1 class="login__title">Admin <span class="g">Dashboard</span></h1>' +
       '<p class="login__sub">' + (claimed ? "Welcome back, " + esc(name) + "." : "First time — set your admin password.") + '</p>' +
