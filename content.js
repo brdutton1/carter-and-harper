@@ -21,16 +21,14 @@ const CONTENT = {
   // (Right now they go to Bryan. To change it later, see README.)
   contactEmail: "bryan@allegrodesignco.com",
 
-  // OPTIONAL: paste a Web3Forms access key here to turn the form into
-  // real email delivery (free — see README "Turn on the form").
-  // Only used as a fallback if the AI proposal endpoint below isn't set up. Leave as "" otherwise.
+  // Form fallback key (Web3Forms). Managed in the admin portal → Settings → Form fallback.
+  // The value here is just the fallback used if the admin portal can't be reached.
   formAccessKey: "",
 
-  /* ---- AI PROPOSAL ENGINE (currently OFF) ----
-     The serverless function in /api/proposal.js is built and ready, but turned off here
-     because we shouldn't promise an instant proposal until there's real custom-design demand.
-     To turn it on later: set proposalEndpoint to "/api/proposal" and write a callout line.
-     (You'll also need ANTHROPIC_API_KEY + RESEND_API_KEY in Vercel env vars — see README.) */
+  /* ---- AI PROPOSAL ENGINE ----
+     The serverless function /api/proposal.js is built and ready. Toggle it on/off from
+     the admin portal → Settings → AI proposal (no deploy needed). Requires ANTHROPIC_API_KEY
+     and RESEND_API_KEY env vars in Vercel — see README. */
   ai: {
     proposalEndpoint: "",
     callout: "",
@@ -81,8 +79,11 @@ const CONTENT = {
   /* ---- PRICING PACKAGES ---- */
   // Add or remove packages by copying a whole { ... } block.
   // Put "popular: true" on the one you want to highlight.
+  // The "slug" on each package is what the admin portal uses to match toggles
+  // (which one is "popular", which ones to hide). Don't change slugs after launch.
   packages: [
     {
+      slug: "one-page",
       name: "One-Page Site",
       price: "$225",
       blurb: "Perfect for a single page that tells people who you are.",
@@ -95,6 +96,7 @@ const CONTENT = {
       popular: false,
     },
     {
+      slug: "small-business",
       name: "Small Business Site",
       price: "$575",
       blurb: "A few pages for a real business or service.",
@@ -108,6 +110,7 @@ const CONTENT = {
       popular: true,
     },
     {
+      slug: "glow-up",
       name: "Glow-Up Redesign",
       price: "$325",
       blurb: "Got a site that feels stuck in the past? We rebuild it on our platform — modern design, fast loading, and ready for monthly care.",
@@ -131,8 +134,10 @@ const CONTENT = {
     subtext: "A website isn't 'done' when it launches. It needs updates, backups, and little fixes. Pick a plan and we handle all of it every month so you never have to think about it.",
     plans: [
       {
+        slug: "basic",
         name: "Basic Care",
         price: "$25",
+        priceNumber: 25,  // used by admin MRR calculation
         period: "/mo",
         blurb: "We keep your site online, safe, and working.",
         features: [
@@ -142,12 +147,14 @@ const CONTENT = {
           "Small text fixes (up to 30 min/mo)",
         ],
         popular: false,
-        // Paste the Stripe Payment Link URL once Bryan creates it. Until then, button jumps to the form.
+        // Stripe Payment Link is set in the admin portal → Settings → Stripe care plans.
         paymentLink: "",
       },
       {
+        slug: "plus",
         name: "Plus Care",
         price: "$50",
+        priceNumber: 50,
         period: "/mo",
         blurb: "Everything in Basic, plus we keep it fresh for you.",
         features: [
@@ -157,7 +164,7 @@ const CONTENT = {
           "Priority — we reply to you first",
         ],
         popular: true,
-        // Paste the Stripe Payment Link URL once Bryan creates it. Until then, button jumps to the form.
+        // Stripe Payment Link is set in the admin portal → Settings → Stripe care plans.
         paymentLink: "",
       },
     ],

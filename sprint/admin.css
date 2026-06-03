@@ -46,4 +46,83 @@
 .admin__foot { margin-top: 30px; color: var(--muted2); font-size: .82rem; }
 .admin__foot a { color: var(--muted2); } .admin__foot a:hover { color: var(--accent); }
 
-@media (max-width: 520px) { .admin__grid { grid-template-columns: 1fr; } }
+/* ---------- tabs ---------- */
+.admin__tabs { display: flex; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 22px; width: fit-content; }
+.tab { background: transparent; border: 0; color: var(--muted); font-family: inherit; font-weight: 600; font-size: .92rem; padding: 9px 18px; border-radius: 10px; cursor: pointer; transition: background .15s, color .15s; }
+.tab:hover { color: var(--text); }
+.tab.is-on { background: var(--card2); color: var(--text); box-shadow: 0 1px 0 var(--line2) inset; }
+.admin__pane { animation: panefade .25s ease; }
+@keyframes panefade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---------- kid card additions ---------- */
+.akid__role { font-size: .78rem; color: var(--accent); font-weight: 600; margin: 2px 0 1px; }
+
+/* ---------- metric cards ---------- */
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.metric { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+.metric__l { font-size: .72rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted2); font-weight: 700; }
+.metric__v { font-family: "Archivo Black", sans-serif; font-size: 2.2rem; letter-spacing: -1px; margin: 10px 0 4px; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.metric__s { font-size: .82rem; color: var(--muted); }
+
+.metric-section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; }
+.metric-section__h { font-size: .72rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted2); font-weight: 700; margin-bottom: 12px; }
+.metric-empty { color: var(--muted); font-size: .9rem; padding: 8px 0; }
+.metric-empty code { background: #15141f; padding: 1px 6px; border-radius: 5px; font-size: .85em; }
+.metric-empty a { color: var(--accent); }
+
+.spark { display: flex; align-items: flex-end; gap: 3px; height: 44px; }
+.spark__bar { flex: 1; min-width: 3px; background: var(--grad); border-radius: 2px 2px 0 0; }
+
+/* ---------- leads list ---------- */
+.leads { display: flex; flex-direction: column; gap: 8px; }
+.lead { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.lead__when { font-size: .78rem; color: var(--muted2); white-space: nowrap; }
+.lead__what { font-size: .9rem; color: var(--text); }
+.lead__type { font-weight: 600; }
+.lead__budget, .lead__source { color: var(--muted); }
+.lead__goal { display: inline-block; color: var(--muted); font-size: .82rem; margin-top: 3px; font-style: italic; }
+.lead__btn { white-space: nowrap; }
+
+/* ---------- vitals ---------- */
+.vitals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.vital { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--card2); }
+.vital__l { font-size: .72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted2); font-weight: 700; }
+.vital__v { font-family: "Archivo Black", sans-serif; font-size: 1.5rem; margin-top: 6px; }
+.vital--good { border-color: rgba(52,211,153,.45); } .vital--good .vital__v { color: #34d399; }
+.vital--warn { border-color: rgba(255,191,36,.45); } .vital--warn .vital__v { color: #fbbf24; }
+.vital--poor { border-color: rgba(251,113,133,.5); }  .vital--poor .vital__v { color: var(--bad); }
+.vital--na   { opacity: .6; } .vital--na .vital__v { color: var(--muted2); }
+.vitals__legend { font-size: .76rem; color: var(--muted2); margin: 10px 0 0; }
+
+/* ---------- settings panels ---------- */
+.spanel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin-bottom: 14px; }
+.spanel__h { font-family: "Archivo Black", sans-serif; font-size: 1.15rem; letter-spacing: -.3px; margin: 0 0 4px; }
+.spanel__sub { color: var(--muted); font-size: .88rem; margin: 0 0 18px; }
+.spanel__save { margin-top: 14px; }
+.spanel__save .btn { padding: 9px 18px; font-size: .88rem; }
+.srow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+.srow:first-of-type { border-top: 0; padding-top: 0; }
+.srow--col { flex-direction: column; align-items: stretch; gap: 6px; }
+.srow > span { font-weight: 600; font-size: .9rem; }
+.srow input[type="text"], .srow input[type="url"], .srow input[type="number"], .srow textarea {
+  background: #15141f; border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; color: var(--text);
+  font-family: inherit; font-size: .92rem; width: 100%; resize: vertical;
+}
+.srow input[type="number"] { max-width: 110px; }
+.srow input:focus, .srow textarea:focus { outline: none; border-color: var(--accent); }
+.srow input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+.sgroup__h { font-size: .72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted2); font-weight: 700; margin: 16px 0 8px; }
+.schoices { display: flex; flex-wrap: wrap; gap: 8px; }
+.schip { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; background: var(--card2); border: 1px solid var(--line2); border-radius: 9px; font-size: .88rem; cursor: pointer; }
+.schip:has(input:checked) { border-color: var(--accent); color: var(--accent); }
+.schip input { accent-color: var(--accent); }
+
+/* ---------- toast (admin uses sprint global) ---------- */
+.toast.err { color: var(--bad); }
+
+@media (max-width: 520px) {
+  .admin__grid { grid-template-columns: 1fr; }
+  .vitals { grid-template-columns: 1fr; }
+  .lead { grid-template-columns: 1fr; }
+}

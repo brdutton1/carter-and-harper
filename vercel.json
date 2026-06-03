@@ -5,6 +5,12 @@
   "functions": {
     "api/proposal.js": {
       "maxDuration": 30
+    },
+    "api/site-settings.js": {
+      "maxDuration": 5
+    },
+    "api/site-metrics.js": {
+      "maxDuration": 10
     }
   }
 }

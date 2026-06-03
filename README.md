@@ -38,14 +38,30 @@ The static site alone: just open `index.html` (or `npx serve` from this folder).
 
 The repo is at https://github.com/brdutton1/carter-and-harper, connected to a Vercel project that auto-deploys on push to `main`. Live at https://carter-and-harper.vercel.app. Carter editing `content.js` on GitHub = live site updates in ~1 minute.
 
-## Stripe Payment Links (Phase 1.5 — when you're ready for recurring revenue)
+## Admin portal (the daily control panel)
+
+Open `/sprint`, log in as Bryan, and you get three tabs:
+
+- **Studio** — Carter & Harper's sprint progress (the existing daily check-in view).
+- **Metrics** — leads in the last 7/30 days, median response time, care-plan MRR, conversion %, and the three Core Web Vitals (LCP / INP / CLS). No vanity metrics.
+- **Settings** — live toggles for the public site. Everything below was previously a file-edit-and-deploy; now it's a click:
+  - AI proposal engine on/off + the callout line shown under the form
+  - Stripe payment-link URLs for Basic Care and Plus Care
+  - Which package and which care plan get the "Most popular" badge
+  - Hide any package or care plan
+  - Web3Forms fallback access key
+  - Active care-plan counts (drives the MRR card; later replaced by a Stripe webhook)
+
+Changes propagate to the public site within about a minute (the `/api/site-settings` endpoint is edge-cached for 30s, stale-while-revalidate 5min).
+
+## Stripe Payment Links (when you're ready for recurring revenue)
 
 The care-plan "Pick this" buttons jump to the contact form today. To turn them into one-click subscriptions:
 
 1. [stripe.com](https://stripe.com) → Dashboard → **Payment Links** → New.
 2. Recurring monthly, $25/mo → name it "Basic Care." Copy the `https://buy.stripe.com/…` URL.
 3. Repeat for $50/mo "Plus Care."
-4. Paste both URLs into `content.js` under `maintenance.plans[].paymentLink`. Push. Done.
+4. Open `/sprint` → log in as Bryan → **Settings → Stripe care plan links** → paste both URLs → Save.
 
 ## Custom domain
 
@@ -89,14 +105,10 @@ Once Carter has a domain, add it under **Resend → Domains**, then set `RESEND_
 | `LEAD_NOTIFY_EMAIL` | `bryan@allegrodesignco.com` |
 | `RESEND_FROM_EMAIL` | (optional) custom From address once a Resend domain is verified |
 
-### 4. Flip the switch in `content.js`
-```js
-ai: {
-  proposalEndpoint: "/api/proposal",
-  callout: "Powered by AI — get a real proposal in about 90 seconds. We review it before it lands in your inbox.",
-},
-```
-Also update the matching honest copy:
+### 4. Flip the switch in the admin portal
+Open `/sprint` → log in as Bryan → **Settings → AI proposal engine** → toggle Endpoint **on** → write the callout (e.g. "Powered by AI — get a real proposal in about 90 seconds. We review it before it lands in your inbox.") → Save.
+
+The public site picks up the change within a minute, no deploy needed. Then update the matching honest copy in `content.js` (Carter still owns this file):
 - `form.subtext` → `"Answer a few quick questions. We'll send you a real proposal in about 90 seconds."`
 - `form.buttonText` → `"Get my proposal 🚀"`
 - `process.steps[1]` → `{ title: "Get a real proposal in 90 seconds", text: "Our system drafts a custom plan and price. We review it personally before it lands in your inbox." }`
@@ -116,3 +128,23 @@ In `main.js`, branch the submit so the API only fires when `projectType === "Som
 - Resend: $0 (free tier 3k emails/mo)
 
 Everything else stays the same.
+
+---
+
+## Site metrics in the admin portal (optional setup)
+
+The admin Metrics tab pulls leads + response time + MRR from Supabase out of the box. To also show **Core Web Vitals** (LCP/INP/CLS) and **conversion %**, enable Vercel Web Analytics:
+
+1. **Vercel → Project → Analytics** → enable Web Analytics + Speed Insights. (Free on Hobby tier.) The two `<script>` tags are already in `index.html` and start collecting once Analytics is on.
+2. **Vercel → Account → Tokens** → create a token (read-only is enough). Copy it.
+3. **Vercel → Project → Settings → Environment Variables.** Add:
+
+| Name | Value |
+|------|-------|
+| `VERCEL_ANALYTICS_TOKEN` | the token from step 2 |
+| `VERCEL_PROJECT_ID` | from the project settings page |
+| `VERCEL_TEAM_ID` | (only if the project lives under a team) |
+
+The `/api/site-metrics` function verifies the admin's Supabase JWT before forwarding to Vercel, so the analytics token never reaches the browser.
+
+If these aren't set, the admin Metrics tab still shows leads + MRR — the vitals cards just display "—" and link out to the full Vercel dashboard.

@@ -57,7 +57,7 @@ window.SprintApp = (function () {
   }
 
   // ---------- DOM refs ----------
-  var $nav, $view, $ring, $ringNum, $shipped, $shipped2, $checks, $side, $scrim, $toast, $userName, $userAv;
+  var $nav, $view, $ring, $ringNum, $shipped, $shipped2, $checks, $side, $scrim, $toast, $userName, $userAv, $userSpecialty;
   var RING_C = 169.646;
   var booted = false;
 
@@ -74,6 +74,7 @@ window.SprintApp = (function () {
     $toast = document.querySelector("[data-toast]");
     $userName = document.querySelector("[data-user-name]");
     $userAv = document.querySelector("[data-user-av]");
+    $userSpecialty = document.querySelector("[data-user-specialty]");
   }
 
   // ---------- nav ----------
@@ -375,6 +376,7 @@ window.SprintApp = (function () {
     grabRefs();
     if ($userName) $userName.textContent = CTX.name || "Studio";
     if ($userAv) $userAv.textContent = (CTX.name || "?").charAt(0).toUpperCase();
+    if ($userSpecialty) $userSpecialty.textContent = CTX.specialty || "";
     if (!booted) { wireChrome(); buildNav(); booted = true; }
     render();
   }

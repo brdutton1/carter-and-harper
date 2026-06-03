@@ -1,6 +1,8 @@
 /* Auth gate for the Web Studio Sprint portal.
    - No session  -> render the login screen (claim / sign-in / reset).
-   - Session      -> hydrate progress from Supabase and boot the portal app. */
+   - Session      -> hydrate progress from Supabase and boot the portal app.
+   All three logins (Carter, Harper, Bryan) share the same tile + password flow;
+   role detection happens server-side via the me() RPC after sign-in. */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY, FUNCTIONS_URL, ACCOUNTS } from "/sprint/config.js";
 
@@ -52,23 +54,33 @@ async function callFn(path, body) {
 }
 
 // ---------- portal handoff ----------
-async function startPortal(user) {
+async function startPortal(user, me) {
   const acct = ACCOUNTS.find(a => a.email.toLowerCase() === String(user.email || "").toLowerCase());
   if (!acct) { await supabase.auth.signOut(); return showLogin("That account isn't part of this studio."); }
   const checks = await loadProgress(user.id);
   $auth.hidden = true;
   document.querySelector("[data-app]").hidden = false;
   document.body.classList.remove("preboot");
-  window.SprintApp.boot({ name: acct.name, checks, onChange: makeOnChange(user.id), onToggle: makeOnToggle(user.id), onLogout: doLogout });
+  window.SprintApp.boot({
+    name: acct.name,
+    specialty: (me && me.specialty) || "",
+    checks,
+    onChange: makeOnChange(user.id),
+    onToggle: makeOnToggle(user.id),
+    onLogout: doLogout,
+  });
 }
 async function doLogout() { try { await supabase.auth.signOut(); } catch (e) {} location.reload(); }
 
 // Route a logged-in user to the kid portal or the admin dashboard by role.
 async function route(user) {
-  let role = "kid", name = null;
-  try { const { data } = await supabase.rpc("me"); if (data) { role = data.role || "kid"; name = data.name; } } catch (e) {}
-  if (role === "admin") return startAdmin(user, name);
-  return startPortal(user);
+  let me = { role: "kid", name: null, specialty: null };
+  try {
+    const { data } = await supabase.rpc("me");
+    if (data) me = { role: data.role || "kid", name: data.name, specialty: data.specialty };
+  } catch (e) {}
+  if (me.role === "admin") return startAdmin(user, me.name);
+  return startPortal(user, me);
 }
 async function startAdmin(user, name) {
   $auth.hidden = true;
@@ -89,6 +101,7 @@ function esc(t) { return String(t || "").replace(/[&<>"]/g, c => ({ "&": "&amp;"
 async function showLogin(message) {
   document.body.classList.add("preboot");
   document.querySelector("[data-app]").hidden = true;
+  const adminEl = document.getElementById("admin"); if (adminEl) adminEl.hidden = true;
   $auth.hidden = false;
   $auth.innerHTML =
     '<div class="login">' +
@@ -103,25 +116,36 @@ async function showLogin(message) {
       '</div>' +
     '</div>';
 
-  // Fetch which names exist + whether they've set a password.
+  // Fetch every account (kids + admin). All three log in via the same tile flow.
+  // Each profile carries its role + specialty, displayed under the name.
   let profiles = [];
   try {
-    const { data } = await supabase.from("profiles").select("name, claimed, role");
-    profiles = (data || []).filter(p => p.role !== "admin");
+    const { data } = await supabase.from("profiles").select("name, claimed, role, specialty");
+    profiles = data || [];
   } catch (e) {}
-  if (!profiles.length) profiles = ACCOUNTS.filter(a => a.name !== "Bryan").map(a => ({ name: a.name, claimed: true }));
-  // Keep Carter, Harper order.
+  if (!profiles.length) profiles = ACCOUNTS.map(a => ({ name: a.name, claimed: true, role: a.name === "Bryan" ? "admin" : "kid" }));
+  // Order: kids first (in config order), then admin.
   const order = ACCOUNTS.map(a => a.name);
-  profiles.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+  profiles.sort((a, b) => {
+    if (a.role !== b.role) return a.role === "admin" ? 1 : -1;
+    return order.indexOf(a.name) - order.indexOf(b.name);
+  });
 
   const who = $auth.querySelector("[data-who]");
-  who.innerHTML = profiles.map(p =>
-    '<button class="who" data-name="' + esc(p.name) + '" data-claimed="' + (p.claimed ? "1" : "0") + '">' +
+  who.innerHTML = profiles.map(p => {
+    const role = p.role === "admin" ? "Admin" : (p.specialty || "Studio member");
+    const isAdmin = p.role === "admin";
+    return '<button class="who' + (isAdmin ? " who--admin" : "") + '"' +
+      ' data-name="' + esc(p.name) + '"' +
+      ' data-claimed="' + (p.claimed ? "1" : "0") + '">' +
       '<span class="who__av">' + esc(p.name.charAt(0)) + "</span>" +
-      '<span class="who__name">' + esc(p.name) + "</span>" +
+      '<span class="who__id">' +
+        '<span class="who__name">' + esc(p.name) + "</span>" +
+        '<span class="who__role">' + esc(role) + "</span>" +
+      "</span>" +
       '<span class="who__status">' + (p.claimed ? "Log in →" : "Set up →") + "</span>" +
-    "</button>"
-  ).join("");
+    "</button>";
+  }).join("");
   who.querySelectorAll(".who").forEach(btn => {
     btn.addEventListener("click", () => openForm(btn.getAttribute("data-name"), btn.getAttribute("data-claimed") === "1"));
   });
@@ -166,7 +190,7 @@ function openForm(name, claimed, mode) {
       const { error } = await supabase.auth.signInWithPassword({ email: emailFor(name), password });
       if (error) { setBusy(go, false, "Create my login →"); return showErr(error.message); }
       const { data: { user } } = await supabase.auth.getUser();
-      startPortal(user);
+      route(user);
     };
     go.addEventListener("click", claim);
     pw.addEventListener("keydown", e => { if (e.key === "Enter") claim(); });
@@ -177,7 +201,7 @@ function openForm(name, claimed, mode) {
       setBusy(go, "Logging in…");
       const { data, error } = await supabase.auth.signInWithPassword({ email: emailFor(name), password });
       if (error || !data.user) { setBusy(go, false, "Log in →"); return showErr("Wrong password. Try again, or use 'Forgot your password?'"); }
-      startPortal(data.user);
+      route(data.user);
     };
     go.addEventListener("click", signin);
     pw.addEventListener("keydown", e => { if (e.key === "Enter") signin(); });
@@ -215,89 +239,6 @@ function setBusy(btn, busyText, restoreText) {
   else { btn.textContent = restoreText || btn.dataset.txt || btn.textContent; btn.disabled = false; }
 }
 
-// ---------- admin login (hidden entry at /sprint#admin) ----------
-async function showAdminLogin() {
-  document.body.classList.add("preboot");
-  document.querySelector("[data-app]").hidden = true;
-  const adminEl = document.getElementById("admin"); if (adminEl) adminEl.hidden = true;
-  $auth.hidden = false;
-  let claimed = true, name = "Bryan";
-  try {
-    const { data } = await supabase.from("profiles").select("name, claimed, role");
-    const a = (data || []).find(p => p.role === "admin");
-    if (a) { claimed = a.claimed; name = a.name; }
-  } catch (e) {}
-  $auth.innerHTML =
-    '<div class="login"><div class="login__glow"></div><div class="login__card">' +
-      '<div class="login__brand">🔒 Studio Admin</div>' +
-      '<h1 class="login__title">Admin <span class="g">Dashboard</span></h1>' +
-      '<p class="login__sub">' + (claimed ? "Welcome back, " + esc(name) + "." : "First time — set your admin password.") + '</p>' +
-      '<div class="login__form">' +
-        '<div class="login__avbig">' + esc(name.charAt(0)) + '</div>' +
-        (claimed
-          ? '<input class="login__in" data-pw type="password" placeholder="Your password" autocomplete="current-password">' +
-            '<button class="btn btn--primary login__go" data-signin>Open dashboard →</button>' +
-            '<button class="login__link" data-forgot>Forgot your password?</button>'
-          : '<p class="login__hint">Enter the studio access code, then choose a password.</p>' +
-            '<input class="login__in" data-code type="text" placeholder="Studio access code" autocomplete="off">' +
-            '<input class="login__in" data-pw type="password" placeholder="Choose a password (8+ characters)" autocomplete="new-password">' +
-            '<button class="btn btn--primary login__go" data-claim>Create admin login →</button>') +
-        '<div class="login__err" data-err></div>' +
-      '</div>' +
-    '</div></div>';
-  const pw = $auth.querySelector("[data-pw]");
-  const go = $auth.querySelector(".login__go");
-  if (claimed) {
-    const signin = async () => {
-      if (!pw.value) return showErr("Enter your password.");
-      setBusy(go, "Opening…");
-      const { data, error } = await supabase.auth.signInWithPassword({ email: emailFor(name), password: pw.value });
-      if (error || !data.user) { setBusy(go, false, "Open dashboard →"); return showErr("Wrong password. Try again, or use 'Forgot your password?'"); }
-      route(data.user);
-    };
-    go.addEventListener("click", signin);
-    pw.addEventListener("keydown", e => { if (e.key === "Enter") signin(); });
-    $auth.querySelector("[data-forgot]").addEventListener("click", () => openAdminReset(name));
-  } else {
-    const codeEl = $auth.querySelector("[data-code]");
-    const claim = async () => {
-      if (!codeEl.value.trim()) return showErr("Enter the studio access code.");
-      if (pw.value.length < 8) return showErr("Password must be at least 8 characters.");
-      setBusy(go, "Creating…");
-      const r = await callFn("claim-account", { name, accessCode: codeEl.value.trim(), password: pw.value });
-      if (!r.ok) { setBusy(go, false, "Create admin login →"); return showErr(r.data.error || "Couldn't create the login."); }
-      const { error } = await supabase.auth.signInWithPassword({ email: emailFor(name), password: pw.value });
-      if (error) { setBusy(go, false, "Create admin login →"); return showErr(error.message); }
-      const { data: { user } } = await supabase.auth.getUser();
-      route(user);
-    };
-    go.addEventListener("click", claim);
-    pw.addEventListener("keydown", e => { if (e.key === "Enter") claim(); });
-  }
-  setTimeout(() => { const f = $auth.querySelector("input"); if (f) f.focus(); }, 30);
-}
-function openAdminReset(name) {
-  const form = $auth.querySelector(".login__form");
-  form.innerHTML =
-    '<button class="login__back" data-back>← Back</button>' +
-    '<h2 class="login__name">Reset admin login</h2>' +
-    '<p class="login__hint">Enter the studio access code to reset, then set a new password.</p>' +
-    '<input class="login__in" data-code type="text" placeholder="Studio access code" autocomplete="off">' +
-    '<button class="btn btn--primary login__go" data-reset>Reset →</button>' +
-    '<div class="login__err" data-err></div>';
-  form.querySelector("[data-back]").addEventListener("click", showAdminLogin);
-  const code = form.querySelector("[data-code]"), go = form.querySelector("[data-reset]");
-  const reset = async () => {
-    if (!code.value.trim()) return showErr("Enter the studio access code.");
-    setBusy(go, "Resetting…");
-    const r = await callFn("reset-account", { name, accessCode: code.value.trim() });
-    if (!r.ok) { setBusy(go, false, "Reset →"); return showErr(r.data.error || "Reset failed."); }
-    showAdminLogin();
-  };
-  go.addEventListener("click", reset);
-  code.addEventListener("keydown", e => { if (e.key === "Enter") reset(); });
-}
-
 // ---------- boot ----------
 function hideBoot() { const b = document.querySelector("[data-boot]"); if (b) b.remove(); }
 supabase.auth.onAuthStateChange((event) => { if (event === "SIGNED_OUT") location.reload(); });
@@ -307,6 +248,5 @@ supabase.auth.onAuthStateChange((event) => { if (event === "SIGNED_OUT") locatio
   try { ({ data: { session } } = await supabase.auth.getSession()); } catch (e) {}
   hideBoot();
   if (session && session.user) return route(session.user);
-  if (location.hash === "#admin") return showAdminLogin();
   showLogin();
 })();
