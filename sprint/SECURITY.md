@@ -12,15 +12,17 @@ private data, and no secret ever ships to the browser.**
 ## Tables & RLS (all tables have RLS enabled)
 | Table | Who can read | Who can write |
 |-------|--------------|---------------|
-| `profiles` | anon/authenticated may read **only** `(name, claimed, role)` (column-grant); no email/uid leak | **no client write policy** — only the service role (edge functions) writes |
+| `profiles` | anon/authenticated may read **only** `(name, claimed, role, specialty)` (column-grant); no email/uid leak | **no client write policy** — only the service role (edge functions) writes |
 | `sprint_progress` | **owner only** (`user_id = auth.uid()`) | owner only (insert/update) |
 | `activity_log` | **no select policy** (nobody reads directly) | insert-own only |
+| `site_settings` | anon + authenticated may **read** (the public site renders from these) | **no client write policy** — admin writes only via the `admin-action` edge function (service role) |
+| `leads` | **no select policy** (nobody reads directly) | anon/authenticated may **insert** (lead capture from the public form); read happens via admin RPC |
 
 Cross-user reads happen **only** through `SECURITY DEFINER` RPCs that check the caller:
-- `me()` → returns the caller's own `{name, role}`.
+- `me()` → returns the caller's own `{name, role, specialty}`.
 - `is_admin()` → true only for the admin profile.
-- `admin_overview()` / `admin_activity()` → **raise `not authorized`** unless `is_admin()`.
-  (Anon `EXECUTE` is revoked; verified a kid session gets `not authorized`.)
+- `admin_overview()` / `admin_activity()` / `admin_leads()` / `admin_mark_replied()` → **raise `not authorized`** unless `is_admin()`.
+  Anon `EXECUTE` is revoked from `PUBLIC`; only the `authenticated` role can call them, and the in-function `is_admin()` check filters out non-admin authenticated callers.
 
 ## Keys & secrets
 - **Browser ships only** the publishable/anon key (`sprint/config.js`). RLS is the real guard.
@@ -28,8 +30,12 @@ Cross-user reads happen **only** through `SECURITY DEFINER` RPCs that check the 
   edge functions at runtime only (`seed`, `claim-account`, `reset-account`, `admin-action`).
 - The **studio access code** lives server-side in the edge functions (env override
   `STUDIO_ACCESS_CODE`), never in client code.
-- Admin actions (`admin-action`) are gated by the **admin's JWT**, not the access code, and only
-  target kid accounts.
+- Admin actions (`admin-action`) are gated by the **admin's JWT**, not the access code. It handles
+  per-kid actions (`reset_password`, `reset_progress`) and live site-settings updates
+  (`update_settings`, restricted to an allowlist of setting keys).
+- The optional `/api/site-metrics` endpoint (Vercel Analytics proxy) verifies the admin JWT via
+  `is_admin()` before forwarding to Vercel with the server-side `VERCEL_ANALYTICS_TOKEN`. The
+  Vercel token never reaches the browser.
 
 ## How to verify (run before any deploy)
 1. Supabase: `get_advisors(security)` → no RLS-disabled / exposed-table warnings.
