@@ -104,6 +104,7 @@
       const priceHtml = p.period
         ? p.price + '<span class="price-card__period">' + p.period + "</span>"
         : p.price;
+      if (!p.period) card.appendChild(el("div", "price-card__startingat", "Starting at"));
       card.appendChild(el("div", "price-card__price", priceHtml));
       card.appendChild(el("p", "price-card__blurb", p.blurb));
       const ul = el("ul", "price-card__features");
